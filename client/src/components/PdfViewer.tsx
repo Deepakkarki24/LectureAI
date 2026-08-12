@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Document, Page } from 'react-pdf'
 import { CaretLeftIcon, CaretRightIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@phosphor-icons/react'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -16,12 +16,12 @@ const MIN_SCALE = 0.6
 const MAX_SCALE = 2.0
 const DEFAULT_SCALE = 1.0
 
-export default function PdfViewer({
+export const PdfViewer: React.FC<PdfViewerProps> = ({
   fileUrl,
   onDocumentLoad,
   onDocumentError,
   onLoadStart,
-}: PdfViewerProps) {
+}) => {
   const [currentPage, setCurrentPage] = useState(1)
   const [scale, setScale] = useState(DEFAULT_SCALE)
   const [pageCount, setPageCount] = useState(0)

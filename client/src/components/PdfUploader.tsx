@@ -11,14 +11,14 @@ interface PdfUploaderProps {
   onRemove: () => void
 }
 
-export default function PdfUploader({
+export const PdfUploader: React.FC<PdfUploaderProps> = ({
   file,
   pageCount,
   error,
   isValidating,
   onFileSelect,
   onRemove,
-}: PdfUploaderProps) {
+}) => {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -50,7 +50,7 @@ export default function PdfUploader({
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-slate-900">Upload PDF</h2>
         <p className="mt-1 text-sm text-slate-500">
-          PDF only · Max 20 MB · Max 5 pages
+          PDF only · Max 20 MB · Max 8 pages
         </p>
       </div>
 
@@ -63,11 +63,10 @@ export default function PdfUploader({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-12 transition-colors ${
-            isDragging
+          className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-12 transition-colors ${isDragging
               ? 'border-blue-400 bg-blue-50'
               : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100'
-          }`}
+            }`}
         >
           <UploadSimpleIcon size={36} className="mb-3 text-slate-400" />
           <p className="text-sm font-medium text-slate-700">
@@ -98,7 +97,7 @@ export default function PdfUploader({
             <button
               type="button"
               onClick={onRemove}
-              className="shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+              className="shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 cursor-pointer"
               aria-label="Remove PDF"
             >
               <XIcon size={18} />

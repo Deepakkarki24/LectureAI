@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CircleNotchIcon, FileTextIcon } from '@phosphor-icons/react'
-import PdfUploader from '../components/PdfUploader'
-import PdfViewer from '../components/PdfViewer'
-import ExtractedContent from '../components/ExtractedContent'
+import { PdfUploader } from '../components/PdfUploader'
 import ScriptEditor from '../components/ScriptEditor'
 import { validatePageCount, validatePdfFileBasic } from '../lib/pdfConfig'
 import { extractPdfContent } from '../services/api'
 import { mockConvertToVoice, mockGenerateAiScript } from '../utils/utils'
+import { ExtractedContent } from '../components/ExtractedContent'
+import { PdfViewer } from '../components/PdfViewer'
 
 export default function Dashboard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null)
@@ -194,7 +194,7 @@ export default function Dashboard() {
               type="button"
               onClick={handleExtract}
               disabled={isExtracting}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 cursor-pointer"
             >
               {isExtracting ? (
                 <>
@@ -217,6 +217,7 @@ export default function Dashboard() {
         {isValidPdf && (
           <ExtractedContent
             content={extractedContent}
+            setContent={setExtractedContent}
             isExtracting={isExtracting}
             isGeneratingScript={isGeneratingScript}
             canGenerateScript={hasExtracted && !isExtracting}

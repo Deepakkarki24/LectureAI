@@ -1,4 +1,5 @@
-import { CircleNotchIcon, SparkleIcon } from '@phosphor-icons/react'
+import { CircleNotchIcon, FloppyDiskIcon, PencilSimpleIcon, SparkleIcon } from '@phosphor-icons/react'
+import React, { useState } from 'react'
 
 interface ExtractedContentProps {
   content: string
@@ -6,16 +7,22 @@ interface ExtractedContentProps {
   isGeneratingScript: boolean
   canGenerateScript: boolean
   onGenerateScript: () => void
+  setContent: (val: string) => void
 }
 
-export default function ExtractedContent({
+export const ExtractedContent: React.FC<ExtractedContentProps> = ({
   content,
   isExtracting,
   isGeneratingScript,
   canGenerateScript,
   onGenerateScript,
-}: ExtractedContentProps) {
+  setContent
+}) => {
   const hasContent = content.length > 0
+
+  console.log(content)
+
+  const [isEdited, setIsEdited] = useState<boolean>(false)
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -26,24 +33,43 @@ export default function ExtractedContent({
             Text extracted from your PDF document
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onGenerateScript}
-          disabled={!canGenerateScript || isGeneratingScript}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
-          {isGeneratingScript ? (
-            <>
-              <CircleNotchIcon size={16} className="animate-spin" />
-              Generating…
-            </>
-          ) : (
-            <>
-              <SparkleIcon size={16} />
-              Generate AI Script
-            </>
-          )}
-        </button>
+        <div className='flex gap-2 items-center'>
+          <button
+            type="button"
+            onClick={() => setIsEdited((prev) => !prev)}
+            disabled={!canGenerateScript || isGeneratingScript}
+            className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 cursor-pointer"
+          >
+            {!isEdited ?
+              <span className='flex items-center gap-1'>
+                <PencilSimpleIcon size={16} />
+                Edit
+              </span> :
+              <span className='flex items-center gap-1'>
+                <FloppyDiskIcon size={16} />
+                Save
+              </span>
+            }
+          </button>
+          <button
+            type="button"
+            onClick={onGenerateScript}
+            disabled={!canGenerateScript || isGeneratingScript}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 cursor-pointer"
+          >
+            {isGeneratingScript ? (
+              <>
+                <CircleNotchIcon size={16} className="animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <SparkleIcon size={16} />
+                Generate AI Script
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="relative min-h-50 rounded-lg border border-slate-200 bg-slate-50">
@@ -62,14 +88,16 @@ export default function ExtractedContent({
           </div>
         )}
 
-        {hasContent && (
+        {hasContent && !isEdited ? (
           <div className="max-h-80 overflow-y-auto p-4">
             <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">
               {content}
             </pre>
           </div>
-        )}
+        ) : <div className="max-h-80 overflow-y-auto p-4">
+          <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={10} className="w-full whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700 p-2" />
+        </div>}
       </div>
-    </section>
+    </section >
   )
 }
