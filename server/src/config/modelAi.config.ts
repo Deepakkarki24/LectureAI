@@ -54,12 +54,15 @@ export const runGoogleGeminiModel = async (
                     contents,
                 });
 
-                const finalResult = JSON.parse(response.text || "{}");
+                console.log("response.text", response.text)
+
+                const finalResult = response.text || "";
+                console.log("finalResult", finalResult)
 
                 return {
                     success: true,
                     data: finalResult,
-                    message: "AI json complaint generated",
+                    message: "AI script generated",
                     service: "google",
                     err: "",
                 };

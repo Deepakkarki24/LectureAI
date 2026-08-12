@@ -3,8 +3,7 @@ import { CircleNotchIcon, FileTextIcon } from '@phosphor-icons/react'
 import { PdfUploader } from '../components/PdfUploader'
 import ScriptEditor from '../components/ScriptEditor'
 import { validatePageCount, validatePdfFileBasic } from '../lib/pdfConfig'
-import { extractPdfContent } from '../services/api'
-import { mockConvertToVoice, mockGenerateAiScript } from '../utils/utils'
+import { extractPdfContent, generateAiScript, generateAudioFromScript } from '../services/api'
 import { ExtractedContent } from '../components/ExtractedContent'
 import { PdfViewer } from '../components/PdfViewer'
 
@@ -26,6 +25,7 @@ export default function Dashboard() {
 
   const [isConverting, setIsConverting] = useState(false)
   const [voiceReady, setVoiceReady] = useState(false)
+  const [audioUrl, setAudioUrl] = useState("")
 
   const isValidPdf = pdfFile !== null && !validationError && pageCount !== null && !isValidating
 
@@ -131,7 +131,8 @@ export default function Dashboard() {
     setVoiceReady(false)
 
     try {
-      const generated = await mockGenerateAiScript(extractedContent)
+      const generated = await generateAiScript(extractedContent)
+      console.log("generated",)
       setScript(generated)
       setHasGeneratedScript(true)
     } finally {
@@ -146,7 +147,15 @@ export default function Dashboard() {
     setVoiceReady(false)
 
     try {
-      await mockConvertToVoice(script)
+      const response = await generateAudioFromScript(script)
+
+      if (!response) {
+        throw new Error("Failed to generate audio");
+      }
+
+      console.log(response)
+
+      setAudioUrl(response as string);
       setVoiceReady(true)
     } finally {
       setIsConverting(false)
@@ -234,6 +243,7 @@ export default function Dashboard() {
             canConvertToVoice={hasGeneratedScript && script.trim().length > 0}
             isConverting={isConverting}
             voiceReady={voiceReady}
+            audioUrl={audioUrl}
             onConvertToVoice={handleConvertToVoice}
           />
         )}

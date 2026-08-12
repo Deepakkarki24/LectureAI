@@ -2,6 +2,7 @@ import { CircleNotchIcon, MicrophoneIcon } from '@phosphor-icons/react'
 
 interface ScriptEditorProps {
   script: string
+  audioUrl: string
   disabled: boolean
   isGenerating: boolean
   onChange: (value: string) => void
@@ -13,6 +14,7 @@ interface ScriptEditorProps {
 
 export default function ScriptEditor({
   script,
+  audioUrl,
   disabled,
   isGenerating,
   onChange,
@@ -68,7 +70,7 @@ export default function ScriptEditor({
         />
       </div>
 
-      {voiceReady && (
+      {!voiceReady && !audioUrl ? (
         <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
           <MicrophoneIcon size={32} className="mx-auto mb-2 text-slate-400" />
           <p className="text-sm font-medium text-slate-600">
@@ -78,7 +80,11 @@ export default function ScriptEditor({
             Audio playback and download will be added when the voice API is connected.
           </p>
         </div>
-      )}
+      ) : <div className="mt-4 w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+        <audio className='w-full' controls src={audioUrl} />
+      </div>
+
+      }
     </section>
   )
 }

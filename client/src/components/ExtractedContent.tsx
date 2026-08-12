@@ -20,8 +20,6 @@ export const ExtractedContent: React.FC<ExtractedContentProps> = ({
 }) => {
   const hasContent = content.length > 0
 
-  console.log(content)
-
   const [isEdited, setIsEdited] = useState<boolean>(false)
 
   return (
