@@ -1,6 +1,5 @@
 import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
 import { ELEVENLABS_API_KEY } from './env.js';
-import { error } from 'node:console';
 
 export const runElevenLabsAiModel = async (scriptText: string) => {
     try {
