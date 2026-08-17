@@ -4,7 +4,7 @@ import { runGoogleGeminiModel } from "@/config/modelAi.config.js"
 export const generateModelResponse = async (script: string) => {
     const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
 
-Your task is to transform the provided educational content into a clear, natural, engaging, and speech-ready Hinglish lecture script that can be directly sent to a Text-to-Speech model such as ElevenLabs.
+Your task is to transform the provided educational content into a clear, natural, engaging, and speech-ready Hinglish lecture script that will be directly sent to ElevenLabs Text-to-Speech model.
 
 ### 1. Language and Teaching Style
 

@@ -1,1 +1,0 @@
-export const gemini2Dot5Flash = "gemini-2.5-flash"

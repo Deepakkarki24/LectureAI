@@ -19,8 +19,10 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
     "mongoose": "^9.9.2",
     "multer": "^2.2.0",
+    "openai": "^6.49.0",
     "pdfjs-dist": "^5.4.296"
   },
   "devDependencies": {

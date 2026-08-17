@@ -9,19 +9,19 @@ export const extractPdfContent = async (file: File) => {
     body: formData,
   })
 
-  const data = (await response.json()) as { content?: string; error?: string }
+  const data = (await response.json()) as { data?: string; error?: string }
 
   if (!response.ok) {
     throw new Error(data.error ?? 'Failed to extract PDF content.')
   }
 
-  return data.content ?? ''
+  return data.data ?? ''
 }
 
 
-export const generateAiScript = async (script: string) => {
+export const generateAiScript = async (content: string) => {
   const formData = new FormData()
-  formData.append('script', script)
+  formData.append('content', content)
 
   const response = await fetch(`${API_BASE_URL}/api/pdf/generate-script`, {
     method: 'POST',
@@ -29,6 +29,8 @@ export const generateAiScript = async (script: string) => {
   })
 
   const data = (await response.json()) as { data?: string; error?: string }
+
+  console.log(data)
 
   if (!response.ok) {
     throw new Error(data.error ?? 'Failed to generate ai script.')

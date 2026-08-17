@@ -3,8 +3,9 @@ import {
     ThinkingLevel,
     Type,
 } from '@google/genai';
-import { GOOGLE_API_KEY } from './env.js';
-import { gemini2Dot5Flash } from './geminiModel.js';
+import { GOOGLE_API_KEY, OPENAI_API_KEY } from './env.js';
+import { gemini2Dot5Flash, gpt5Mini } from './model.js';
+import OpenAI from "openai";
 
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,7 +62,7 @@ export const runGoogleGeminiModel = async (
 
                 return {
                     success: true,
-                    data: finalResult,
+                    script: finalResult,
                     message: "AI script generated",
                     service: "google",
                     err: "",
@@ -106,3 +107,34 @@ export const runGoogleGeminiModel = async (
 }
 
 
+export const runOpenAiModel = async (systemInstruction: string, script: string) => {
+    const openai = new OpenAI({
+        apiKey: OPENAI_API_KEY,
+    });
+
+    const model = gpt5Mini
+
+    const config = {
+        text: {
+            format: {
+                type: "text",
+            },
+            verbosity: "medium",
+        },
+
+        reasoning: {
+            effort: "medium",
+            mode: "standard",
+        },
+    } as const
+
+    const response = await openai.responses.create({
+        model,
+        instructions: systemInstruction,
+        input: script,
+        ...config,
+    })
+
+    
+
+}

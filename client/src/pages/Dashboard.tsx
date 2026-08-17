@@ -110,8 +110,8 @@ export default function Dashboard() {
     setVoiceReady(false)
 
     try {
-      const content = await extractPdfContent(pdfFile)
-      setExtractedContent(content)
+      const response = await extractPdfContent(pdfFile)
+      setExtractedContent(response)
       setHasExtracted(true)
     } catch (error) {
       setExtractError(
