@@ -7,6 +7,18 @@ import { extractPdfContent, generateAiScript, generateAudioFromScript } from '..
 import { ExtractedContent } from '../components/ExtractedContent'
 import { PdfViewer } from '../components/PdfViewer'
 
+export interface ScriptInterface {
+  intro: string,
+  content: string,
+  outro: string
+}
+
+export interface AudioUrlInterface {
+  intro: string;
+  content: string;
+  outro: string;
+}
+
 export default function Dashboard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
@@ -20,12 +32,12 @@ export default function Dashboard() {
   const [hasExtracted, setHasExtracted] = useState(false)
 
   const [isGeneratingScript, setIsGeneratingScript] = useState(false)
-  const [script, setScript] = useState('')
+  const [script, setScript] = useState<ScriptInterface | null>(null)
   const [hasGeneratedScript, setHasGeneratedScript] = useState(false)
 
   const [isConverting, setIsConverting] = useState(false)
   const [voiceReady, setVoiceReady] = useState(false)
-  const [audioUrl, setAudioUrl] = useState("")
+  const [audioUrl, setAudioUrl] = useState<AudioUrlInterface | null>(null)
 
   const isValidPdf = pdfFile !== null && !validationError && pageCount !== null && !isValidating
 
@@ -34,7 +46,7 @@ export default function Dashboard() {
     setExtractError(null)
     setHasExtracted(false)
     setIsExtracting(false)
-    setScript('')
+    setScript(null)
     setHasGeneratedScript(false)
     setIsGeneratingScript(false)
     setIsConverting(false)
@@ -105,7 +117,7 @@ export default function Dashboard() {
     setExtractedContent('')
     setExtractError(null)
     setHasExtracted(false)
-    setScript('')
+    setScript(null)
     setHasGeneratedScript(false)
     setVoiceReady(false)
 
@@ -126,14 +138,23 @@ export default function Dashboard() {
     if (!hasExtracted || !extractedContent) return
 
     setIsGeneratingScript(true)
-    setScript('')
+    setScript(null)
     setHasGeneratedScript(false)
     setVoiceReady(false)
 
     try {
       const generated = await generateAiScript(extractedContent)
-      console.log("generated",)
-      setScript(generated)
+      const { intro, content, outro } = generated
+      // console.log("intro", intro)
+      // console.log("outro", outro)
+      // console.log("content", content)
+      const aiGeneratedScript = intro + " " + content + " " + outro
+      console.log("aiGeneratedScript", aiGeneratedScript)
+      setScript({
+        intro,
+        content,
+        outro
+      })
       setHasGeneratedScript(true)
     } finally {
       setIsGeneratingScript(false)
@@ -141,13 +162,15 @@ export default function Dashboard() {
   }
 
   const handleConvertToVoice = async () => {
-    if (!hasGeneratedScript || !script.trim()) return
+    if (!pdfFile || !hasGeneratedScript || !script?.intro.trim() || !script?.content.trim() || !script?.outro.trim()) return
 
     setIsConverting(true)
     setVoiceReady(false)
 
+    const { intro, content, outro } = script
+
     try {
-      const response = await generateAudioFromScript(script)
+      const response = await generateAudioFromScript(intro, content, outro, pdfFile?.name)
 
       if (!response) {
         throw new Error("Failed to generate audio");
@@ -155,7 +178,11 @@ export default function Dashboard() {
 
       console.log(response)
 
-      setAudioUrl(response as string);
+      setAudioUrl({
+        intro: response.introAudioUrl,
+        content: response.contentAudioUrl,
+        outro: response.outroAudioUrl
+      });
       setVoiceReady(true)
     } finally {
       setIsConverting(false)
@@ -234,13 +261,13 @@ export default function Dashboard() {
           />
         )}
 
-        {isValidPdf && (
+        {isValidPdf && script && (
           <ScriptEditor
             script={script}
             disabled={!hasGeneratedScript}
             isGenerating={isGeneratingScript}
-            onChange={setScript}
-            canConvertToVoice={hasGeneratedScript && script.trim().length > 0}
+            setScript={setScript}
+            canConvertToVoice={hasGeneratedScript && script?.intro.trim().length > 0}
             isConverting={isConverting}
             voiceReady={voiceReady}
             audioUrl={audioUrl}

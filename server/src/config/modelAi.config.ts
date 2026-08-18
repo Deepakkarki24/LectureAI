@@ -7,6 +7,12 @@ import { GOOGLE_API_KEY, OPENAI_API_KEY } from './env.js';
 import { gemini2Dot5Flash, gpt5Mini } from './model.js';
 import OpenAI from "openai";
 
+export interface LectureScript {
+    intro: string;
+    content: string;
+    outro: string;
+}
+
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -14,17 +20,13 @@ export const runGoogleGeminiModel = async (
     systemInstruction: string,
     script: string
 ) => {
-
     try {
         const ai = new GoogleGenAI({
-            apiKey: GOOGLE_API_KEY || ""
+            apiKey: GOOGLE_API_KEY || "",
         });
 
         const config = {
             systemInstruction,
-            // thinkingConfig: {
-            //   thinkingLevel: ThinkingLevel.MINIMAL,
-            // },
             responseMimeType: "application/json",
         };
 
@@ -55,14 +57,35 @@ export const runGoogleGeminiModel = async (
                     contents,
                 });
 
-                console.log("response.text", response.text)
-
                 const finalResult = response.text || "";
-                console.log("finalResult", finalResult)
+
+                console.log("Raw Gemini response:", finalResult);
+
+                if (!finalResult) {
+                    throw new Error("Empty response received from Gemini");
+                }
+
+                let parsedResult: LectureScript;
+
+                try {
+                    parsedResult = JSON.parse(finalResult);
+                } catch {
+                    throw new Error("Gemini returned invalid JSON");
+                }
+
+                if (
+                    typeof parsedResult.intro !== "string" ||
+                    typeof parsedResult.content !== "string" ||
+                    typeof parsedResult.outro !== "string"
+                ) {
+                    throw new Error(
+                        "Gemini response does not contain intro, content and outro"
+                    );
+                }
 
                 return {
                     success: true,
-                    script: finalResult,
+                    script: parsedResult,
                     message: "AI script generated",
                     service: "google",
                     err: "",
@@ -72,10 +95,10 @@ export const runGoogleGeminiModel = async (
 
                 console.error(
                     `Attempt ${attempt} failed with status:`,
-                    status
+                    status,
+                    err
                 );
 
-                // Don't retry client errors except 429 limit exceeded
                 if (
                     status === 400 ||
                     status === 401 ||
@@ -86,25 +109,29 @@ export const runGoogleGeminiModel = async (
                     throw err;
                 }
 
-                // Last attempt
                 if (attempt === maxRetries) {
                     throw err;
                 }
 
-                // Exponential backoff
                 const delay = Math.pow(2, attempt) * 1000;
 
-                console.log(
-                    `Retrying in ${delay}ms...`
-                );
+                console.log(`Retrying in ${delay}ms...`);
 
                 await sleep(delay);
             }
         }
     } catch (err: any) {
-        console.log(err)
+        console.error("Gemini generation failed:", err);
+
+        return {
+            success: false,
+            script: null,
+            message: "Failed to generate AI script",
+            service: "google",
+            err: err?.message || "Unknown error",
+        };
     }
-}
+};
 
 
 export const runOpenAiModel = async (systemInstruction: string, script: string) => {
@@ -135,6 +162,6 @@ export const runOpenAiModel = async (systemInstruction: string, script: string) 
         ...config,
     })
 
-    
+
 
 }

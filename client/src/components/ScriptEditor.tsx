@@ -1,11 +1,12 @@
 import { CircleNotchIcon, MicrophoneIcon } from '@phosphor-icons/react'
+import type { AudioUrlInterface, ScriptInterface } from '../pages/Dashboard'
 
 interface ScriptEditorProps {
-  script: string
-  audioUrl: string
+  script: ScriptInterface
+  audioUrl: AudioUrlInterface | null
   disabled: boolean
   isGenerating: boolean
-  onChange: (value: string) => void
+  setScript: (value: ScriptInterface) => void
   canConvertToVoice: boolean
   isConverting: boolean
   voiceReady: boolean
@@ -17,7 +18,7 @@ export default function ScriptEditor({
   audioUrl,
   disabled,
   isGenerating,
-  onChange,
+  setScript,
   canConvertToVoice,
   isConverting,
   voiceReady,
@@ -52,7 +53,7 @@ export default function ScriptEditor({
         </button>
       </div>
 
-      <div className="relative">
+      <div className="relative flex flex-col gap-4">
         {isGenerating && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-lg bg-white/80">
             <CircleNotchIcon size={28} className="animate-spin text-blue-600" />
@@ -60,14 +61,56 @@ export default function ScriptEditor({
           </div>
         )}
 
-        <textarea
-          value={script}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled || isGenerating}
-          placeholder="Your AI-generated script will appear here. You can edit it before converting to voice."
-          rows={14}
-          className="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-        />
+        <div className='w-full flex flex-col gap-2'>
+          <span className='font-semibold w-full text-xl'>Intro</span>
+          <textarea
+            value={script.intro}
+            onChange={(e) =>
+              setScript({
+                ...script,
+                intro: e.target.value,
+              })
+            }
+            disabled={disabled || isGenerating}
+            placeholder="Your AI-generated script will appear here. You can edit it before converting to voice."
+            rows={5}
+            className="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          />
+        </div>
+
+        <div className='w-full flex flex-col gap-2'>
+          <span className='font-semibold w-full text-xl'>Content</span>
+          <textarea
+            value={script.content}
+            onChange={(e) =>
+              setScript({
+                ...script,
+                content: e.target.value,
+              })
+            }
+            disabled={disabled || isGenerating}
+            placeholder="Your AI-generated script will appear here. You can edit it before converting to voice."
+            rows={14}
+            className="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          />
+        </div>
+
+        <div className='w-full flex flex-col gap-2'>
+          <span className='font-semibold w-full text-xl'>Outro</span>
+          <textarea
+            value={script.outro}
+            onChange={(e) =>
+              setScript({
+                ...script,
+                outro: e.target.value,
+              })
+            }
+            disabled={disabled || isGenerating}
+            placeholder="Your AI-generated script will appear here. You can edit it before converting to voice."
+            rows={5}
+            className="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          />
+        </div>
       </div>
 
       {!voiceReady && !audioUrl ? (
@@ -81,7 +124,15 @@ export default function ScriptEditor({
           </p>
         </div>
       ) : <div className="mt-4 w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
-        <audio className='w-full' controls src={audioUrl} />
+        <div className='w-full'>
+          <audio className='w-full' controls src={audioUrl?.intro} />
+        </div>
+        <div className='w-full'>
+          <audio className='w-full' controls src={audioUrl?.content} />
+        </div>
+        <div className='w-full'>
+          <audio className='w-full' controls src={audioUrl?.outro} />
+        </div>
       </div>
 
       }

@@ -13,7 +13,13 @@ export const runElevenLabsAiModel = async (scriptText: string) => {
             {
                 text: scriptText,
                 modelId: 'eleven_multilingual_v2',
-                outputFormat: 'mp3_44100_128', // output_format
+                outputFormat: 'mp3_44100_128', // output_format,
+                voiceSettings: {
+                    // stability: 0.65,
+                    // similarityBoost: 0.85,
+                    // style: 0.15,
+                    useSpeakerBoost: true,
+                }
             }
         );
 

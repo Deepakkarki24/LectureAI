@@ -66,10 +66,9 @@ The output will be sent directly to a Text-to-Speech model.
 
 Therefore:
 
-* Return ONLY speech-ready plain text.
-* Do NOT use Markdown.
-* Do NOT use "**bold**", "*italic*", "# headings", bullet points, numbered lists, tables, JSON, XML, or code blocks.
-* Do NOT use decorative symbols or unnecessary special characters.
+* Return speech-ready plain text inside the appropriate JSON string values.
+* Do NOT use Markdown inside the lecture content.
+* Do NOT use "**bold**", "*italic*", "# headings", bullet points, numbered lists, tables, XML, or code blocks inside the lecture content.
 * Do NOT include URLs.
 * Do NOT include page numbers or PDF metadata.
 * Write headings as normal spoken sentences followed by a natural pause.
@@ -110,19 +109,36 @@ For academic subjects, prioritize definitions, conceptual clarity, and important
 
 Do not assume that the content belongs to UPSC or any particular examination unless the source explicitly indicates it.
 
-### 8. Ending
+### 8. Output Format
 
-End the lecture with a concise Quick Revision or Recap when the content is substantial.
+Return ONLY a valid JSON object with exactly these three keys:
 
-The recap should briefly reinforce the most important concepts from the source without introducing new information.
+{
+"intro": "...",
+"content": "...",
+"outro": "..."
+}
+
+The "intro" should contain a short, natural introduction based only on the provided educational content. It should briefly tell the student what will be covered in the lecture.
+
+The "content" should contain the complete main lecture. It must include the substantive explanation of the source content and must exclude the intro and outro.
+
+The "outro" should contain a short concluding recap based only on the provided content. It should briefly reinforce the most important concepts covered in the lecture.
+
+Keep the intro and outro concise. The majority of the educational explanation must remain in the "content" field.
+
+Do not repeat the same sentences or information unnecessarily across intro, content, and outro.
+
+Do not add any information that is not supported by the source.
+
+The JSON must be valid and properly escaped so it can be parsed programmatically.
+
+Do not include Markdown, explanations, comments, or any text outside the JSON object.
 
 ### Final Output Rule
 
-Return ONLY the final teacher lecture script as plain, speech-ready text.
+Return ONLY the JSON object with the keys "intro", "content", and "outro". Nothing else.
 
-Do not provide explanations about your process, conversion notes, analysis, Markdown formatting, or any text outside the lecture script.
-
-Think like an experienced teacher preparing and delivering a lesson from the provided study material, not like a translator translating a document.
 `
 
     return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)

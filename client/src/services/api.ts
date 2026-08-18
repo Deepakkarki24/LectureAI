@@ -28,9 +28,9 @@ export const generateAiScript = async (content: string) => {
     body: formData,
   })
 
-  const data = (await response.json()) as { data?: string; error?: string }
+  const data = (await response.json()) as { data?: any; error?: string }
 
-  console.log(data)
+  console.log(data.data)
 
   if (!response.ok) {
     throw new Error(data.error ?? 'Failed to generate ai script.')
@@ -39,9 +39,17 @@ export const generateAiScript = async (content: string) => {
   return data.data ?? ''
 }
 
-export const generateAudioFromScript = async (scriptText: string) => {
+export const generateAudioFromScript = async (
+  intro: string,
+  content: string,
+  outro: string,
+  pdfName: string
+) => {
   const formData = new FormData()
-  formData.append('scriptText', scriptText)
+  formData.append('intro', intro)
+  formData.append('content', content)
+  formData.append('outro', outro)
+  formData.append('pdfName', pdfName)
 
   const response = await fetch(
     `${API_BASE_URL}/api/text-to-speech/generate`,
@@ -55,9 +63,13 @@ export const generateAudioFromScript = async (scriptText: string) => {
     throw new Error("Failed to generate audio");
   }
 
-  const audioBlob = await response.blob();
+  // const audioBlob = await response.blob();
 
-  const audioUrl = URL.createObjectURL(audioBlob);
+  // const audioUrl = URL.createObjectURL(audioBlob);
 
-  return audioUrl
+  const data = (await response.json()) as { data?: any; error?: string }
+
+  const { introAudioUrl, contentAudioUrl, outroAudioUrl } = data.data.audio
+
+  return { introAudioUrl, contentAudioUrl, outroAudioUrl }
 }

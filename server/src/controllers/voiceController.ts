@@ -1,5 +1,7 @@
 import { generateVoiceFromText } from "@/runner/runner.js";
 import { errorResponse } from "@/utils/apiResponse.js";
+import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
+import { sanitizeFileName } from "@/utils/utils.js";
 import type { Request, Response } from "express";
 
 export const convertTextToVoice = async (
@@ -7,34 +9,87 @@ export const convertTextToVoice = async (
     res: Response
 ) => {
     try {
-        const { scriptText } = req.body;
+        const { intro, content, outro, pdfName } = req.body;
 
-        if (!scriptText) {
+        if (!intro || !content || !outro) {
             return res.status(400).json({
                 success: false,
                 message: "Script is required to convert into audio!",
             });
         }
 
-        const audio = await generateVoiceFromText(scriptText);
+        const [introAudio, contentAudio, outroAudio] = await Promise.all([
+            generateVoiceFromText(intro),
+            generateVoiceFromText(content),
+            generateVoiceFromText(outro),
+        ]);
 
-        if (!audio) return errorResponse(res, 403, "Error while generating the audio!")
+        if (!introAudio || !contentAudio || !outroAudio) {
+            return res.status(500).json({
+                success: false,
+                message: "Error while generating one or more audio files!",
+            });
+        }
 
-        const arrayBuffer = await new Response(audio).arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        // Convert all audio responses to buffers
+        const [
+            introArrayBuffer,
+            contentArrayBuffer,
+            outroArrayBuffer,
+        ] = await Promise.all([
+            new Response(introAudio).arrayBuffer(),
+            new Response(contentAudio).arrayBuffer(),
+            new Response(outroAudio).arrayBuffer(),
+        ]);
 
-        console.log("Audio size:", buffer.length);
+        const introBuffer = Buffer.from(introArrayBuffer);
+        const contentBuffer = Buffer.from(contentArrayBuffer);
+        const outroBuffer = Buffer.from(outroArrayBuffer);
 
-        res.setHeader("Content-Type", "audio/mpeg");
-        res.setHeader("Content-Length", buffer.length);
+        console.log("Intro audio size:", introBuffer.length);
+        console.log("Content audio size:", contentBuffer.length);
+        console.log("Outro audio size:", outroBuffer.length);
 
-        return res.send(buffer);
+        // make file name sanitized while removing spaces to store as a assetId in clouds
+        const fileName = sanitizeFileName(pdfName)
+
+        const [introUpload, contentUpload, outroUpload] = await Promise.all([
+            uploadAudioToCloudinary(
+                introBuffer,
+                `lectures/${fileName}/intro`
+            ),
+
+            uploadAudioToCloudinary(
+                contentBuffer,
+                `lectures/${fileName}/content`
+            ),
+
+            uploadAudioToCloudinary(
+                outroBuffer,
+                `lectures/${fileName}/outro`
+            ),
+        ]);
+
+        const introUrl = introUpload.secure_url
+        const contentUrl = contentUpload.secure_url
+        const outroUrl = outroUpload.secure_url
+
+        /*Note: Store this Url's in the database according to your schema
+        
+        save url's according to the lecture ids or name whatever you store in schema*/
+
+        return res.status(200).json({
+            success: true,
+            message: "Audio generated successfully!",
+            audio: {
+                introAudioUrl: introUrl,
+                contentAudioUrl: contentUrl,
+                outroAudioUrl: outroUrl,
+            },
+        });
     } catch (err: any) {
         console.error(err);
 
-        return res.status(500).json({
-            success: false,
-            message: err.message || "Failed to generate audio",
-        });
+        return errorResponse(res, 500, "Failed to generate audio")
     }
 };

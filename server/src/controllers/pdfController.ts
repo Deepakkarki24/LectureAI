@@ -54,6 +54,8 @@ export const generateScript = async (req: Request, res: Response) => {
 
         const modelResponse = await generateModelResponse(content)
 
+        console.log("modelResponse:", modelResponse)
+
         if (!modelResponse) {
             return errorResponse(
                 res,
