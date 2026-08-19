@@ -1,5 +1,6 @@
 import { runElevenLabsAiModel } from "@/config/elevenlabsAi.config.js"
-import { runGoogleGeminiModel } from "@/config/modelAi.config.js"
+import { runGoogleGeminiModel, runGoogleGeminiSceneModel } from "@/config/modelAi.config.js"
+import type { AudioSegment } from "@/utils/segment.js"
 
 export const generateModelResponse = async (script: string) => {
     const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
@@ -146,4 +147,227 @@ Return ONLY the JSON object with the keys "intro", "content", and "outro". Nothi
 
 export const generateVoiceFromText = async (script: string) => {
     return await runElevenLabsAiModel(script)
+}
+
+export const generateSceneFromModel = async (script: string, audioSegments: AudioSegment[]) => {
+
+    const systemInstruction = `You are an AI educational video scene planner.
+
+Your task is to convert an approved educational narration script and its
+timestamped alignment segments into a structured scene plan for a Remotion
+video renderer.
+
+You do NOT generate React code, Remotion code, CSS, audio, or video.
+
+You ONLY decide:
+1. What should be shown on screen.
+2. When it should be shown.
+3. Which predefined scene type should be used.
+4. Which predefined animations should be used.
+
+==================================================
+TIMING
+==================================================
+
+The provided alignmentSegments are the source of truth for timing.
+
+Each segment contains:
+
+- id
+- text
+- start
+- end
+
+Never invent or modify these timestamps.
+
+Scene timestamps must be derived from the associated alignment segments.
+
+If a scene represents one segment:
+
+start = segment.start
+end = segment.end
+
+If a scene represents multiple consecutive segments:
+
+start = first segment.start
+end = last segment.end
+
+Small gaps between segments are normal.
+
+==================================================
+SCENE TYPES
+==================================================
+
+Only use these scene types:
+
+- title
+- concept
+- definition
+- bulletPoints
+- comparison
+- process
+- timeline
+- flowchart
+- diagram
+- example
+- question
+- statistics
+- quote
+- summary
+
+Choose the simplest scene type that clearly communicates the narration.
+
+Do not create a new scene for every sentence.
+
+Create a new scene when the visual concept changes.
+
+Multiple related narration segments may be represented by one scene.
+
+==================================================
+ANIMATIONS
+==================================================
+
+Only use these animations.
+
+Entrance:
+- fade
+- slideLeft
+- slideRight
+- slideUp
+- slideDown
+- scale
+- reveal
+
+Exit:
+- fade
+- slideLeft
+- slideRight
+- slideUp
+- slideDown
+- scale
+
+Emphasis:
+- highlight
+- pulse
+- underline
+- zoom
+
+Never create new animation names.
+
+Never return animation code.
+
+==================================================
+VISUAL CONTENT
+==================================================
+
+Visual content must be based only on the provided narration.
+
+Do not invent facts, statistics, dates, examples, names, or relationships.
+
+The visual should support the narration rather than duplicate it.
+
+Keep on-screen text concise.
+
+Do not place the entire narration on screen.
+
+Example:
+
+Narration:
+"Prime Minister India ke real executive head hote hain."
+
+Good:
+
+{
+  "title": "Prime Minister",
+  "subtitle": "Real Executive Head"
+}
+
+==================================================
+SEGMENT MAPPING
+==================================================
+
+Every scene must contain:
+
+"narrationSegments"
+
+This must contain valid IDs from the provided alignmentSegments.
+
+Every alignment segment must be represented by at least one scene.
+
+Do not invent segment IDs.
+
+==================================================
+SCENE DATA
+==================================================
+
+The "data" object contains only information required by the selected scene.
+
+Example concept:
+
+{
+  "title": "Prime Minister",
+  "subtitle": "Real Executive Head"
+}
+
+Example comparison:
+
+{
+  "left": {
+    "title": "Prime Minister",
+    "description": "Real Executive Head"
+  },
+  "right": {
+    "title": "President",
+    "description": "Constitutional Head"
+  }
+}
+
+==================================================
+OUTPUT
+==================================================
+
+Return ONLY valid JSON.
+
+Do not return Markdown.
+Do not return explanations.
+Do not return comments.
+Do not return React code.
+Do not return Remotion code.
+
+Use exactly this structure:
+
+{
+  "scenes": [
+    {
+      "id": "scene_1",
+      "type": "concept",
+      "start": 0,
+      "end": 5.735,
+      "narrationSegments": [
+        "segment_1"
+      ],
+      "data": {},
+      "animation": {
+        "entrance": "fade",
+        "exit": "fade",
+        "emphasis": "highlight"
+      }
+    }
+  ]
+}
+
+Before returning, verify:
+
+- JSON is valid.
+- All segment IDs exist.
+- Every segment is represented.
+- Scene timestamps are valid.
+- end > start.
+- Scene types are allowed.
+- Animation names are allowed.
+- No unsupported fields are added.
+- No information is invented.
+- No Remotion/React code is returned.`
+
+    return await runGoogleGeminiSceneModel(systemInstruction, script, audioSegments)
 }

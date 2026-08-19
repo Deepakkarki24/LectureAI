@@ -1,6 +1,7 @@
-import { generateVoiceFromText } from "@/runner/runner.js";
+import { generateSceneFromModel, generateVoiceFromText } from "@/runner/runner.js";
 import { errorResponse } from "@/utils/apiResponse.js";
 import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
+import { createSentenceTimestamps, type ElevenLabsAlignment } from "@/utils/segment.js";
 import { sanitizeFileName } from "@/utils/utils.js";
 import type { Request, Response } from "express";
 
@@ -31,20 +32,38 @@ export const convertTextToVoice = async (
             });
         }
 
-        // Convert all audio responses to buffers
-        const [
-            introArrayBuffer,
-            contentArrayBuffer,
-            outroArrayBuffer,
-        ] = await Promise.all([
-            new Response(introAudio).arrayBuffer(),
-            new Response(contentAudio).arrayBuffer(),
-            new Response(outroAudio).arrayBuffer(),
-        ]);
+        const reframeAudioSegments = createSentenceTimestamps(contentAudio.alignment as ElevenLabsAlignment)
 
-        const introBuffer = Buffer.from(introArrayBuffer);
-        const contentBuffer = Buffer.from(contentArrayBuffer);
-        const outroBuffer = Buffer.from(outroArrayBuffer);
+        if (!reframeAudioSegments) return errorResponse(res, 400, "Error while reframing segments")
+
+        // Store this alignment segments into db
+        console.log("start generating scene from audio segment!")
+
+        const sceneModelResponse = await generateSceneFromModel(content, reframeAudioSegments)
+
+        console.log("generating scene completed from audio segment!")
+
+        if (!sceneModelResponse) return errorResponse(res, 400, "Error while generating scene from model")
+
+
+        // Convert all audio responses to buffers
+        // const [
+        //     introArrayBuffer,
+        //     contentArrayBuffer,
+        //     outroArrayBuffer,
+        // ] = await Promise.all([
+        //     new Response(introAudio).arrayBuffer(),
+        //     new Response(contentAudio).arrayBuffer(),
+        //     new Response(outroAudio).arrayBuffer(),
+        // ]);
+
+        // const introBuffer = Buffer.from(introArrayBuffer);
+        // const contentBuffer = Buffer.from(contentArrayBuffer);
+        // const outroBuffer = Buffer.from(outroArrayBuffer);
+
+        const introBuffer = introAudio.audioBuffer;
+        const contentBuffer = contentAudio.audioBuffer;
+        const outroBuffer = outroAudio.audioBuffer;
 
         console.log("Intro audio size:", introBuffer.length);
         console.log("Content audio size:", contentBuffer.length);
@@ -75,7 +94,7 @@ export const convertTextToVoice = async (
         const outroUrl = outroUpload.secure_url
 
         /*Note: Store this Url's in the database according to your schema
-        
+
         save url's according to the lecture ids or name whatever you store in schema*/
 
         return res.status(200).json({
@@ -85,7 +104,7 @@ export const convertTextToVoice = async (
                 introAudioUrl: introUrl,
                 contentAudioUrl: contentUrl,
                 outroAudioUrl: outroUrl,
-            },
+            }
         });
     } catch (err: any) {
         console.error(err);
