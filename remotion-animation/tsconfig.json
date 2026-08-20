@@ -3,14 +3,20 @@
     "target": "ES2018",
     "module": "commonjs",
     "jsx": "react-jsx",
+
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0",
+
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "outDir": "dist"
+
+    "rootDir": "./src",
+    "outDir": "./dist"
   },
-  "include": ["src"]
+
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }
