@@ -13,10 +13,10 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
 
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist"
   },
 
-  "include": ["src"],
+  "include": ["src", "render.ts", "run-render.ts"],
   "exclude": ["node_modules", "dist"]
 }
