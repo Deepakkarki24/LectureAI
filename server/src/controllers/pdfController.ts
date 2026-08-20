@@ -1,4 +1,4 @@
-import { generateModelResponse } from "@/runner/runner.js"
+import { generateModelResponse, generateModelResponseII } from "@/runner/runner.js"
 import { extractPdfText } from "@/services/pdfExtract.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
 import type { Request, Response } from "express"
@@ -53,10 +53,12 @@ export const generateScript = async (req: Request, res: Response) => {
         if (!content) return errorResponse(res, 401, "Script is required!")
 
         const modelResponse = await generateModelResponse(content)
+        const modelResponseII = await generateModelResponseII(content)
 
         console.log("modelResponse:", modelResponse)
+        console.log("modelResponseII:", modelResponseII)
 
-        if (!modelResponse) {
+        if (!modelResponse || !modelResponseII) {
             return errorResponse(
                 res,
                 503,
@@ -65,10 +67,11 @@ export const generateScript = async (req: Request, res: Response) => {
         }
 
         const { script } = modelResponse
+        const scriptEnglish = modelResponseII.script
 
-        console.log("modelResponse", script)
+        console.log("modelResponse", script, scriptEnglish)
 
-        return successResponse(res, 200, "Script generated!", script)
+        return successResponse(res, 200, "Script generated!", { script, scriptEnglish })
     } catch (err: any) {
         return res.status(400).json({ error: err.message })
     }

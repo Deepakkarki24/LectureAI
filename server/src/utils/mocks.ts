@@ -79,3 +79,69 @@ export const sceneModelResponse = {
     "service": "google",
     "err": ""
 }
+
+export const scenesEnglish = [
+    {
+        "id": "scene_1",
+        "type": "comparison",
+        "start": 0,
+        "end": 13.27,
+        "narrationSegments": [
+            "segment_1",
+            "segment_2"
+        ],
+        "data": {
+            "left": {
+                "title": "President",
+                "description": "Head of the State\nRepresents the Nation"
+            },
+            "right": {
+                "title": "Prime Minister",
+                "description": "Head of the Government\nRuns Daily Administration"
+            }
+        },
+        "animation": {
+            "entrance": "fade",
+            "exit": "fade"
+        }
+    },
+    {
+        "id": "scene_2",
+        "type": "concept",
+        "start": 13.27,
+        "end": 24.055,
+        "narrationSegments": [
+            "segment_3",
+            "segment_4"
+        ],
+        "data": {
+            "title": "Constitutional Provisions",
+            "subtitle": "PM's powers are not in a single article."
+        },
+        "animation": {
+            "entrance": "fade",
+            "exit": "fade"
+        }
+    },
+    {
+        "id": "scene_3",
+        "type": "bulletPoints",
+        "start": 24.439,
+        "end": 41.935,
+        "narrationSegments": [
+            "segment_5",
+            "segment_6"
+        ],
+        "data": {
+            "title": "Key Constitutional Articles",
+            "points": [
+                "Article 74: Council of Ministers to aid & advise President",
+                "Article 75: Appointment, Tenure, Salaries & Responsibilities of Ministers"
+            ]
+        },
+        "animation": {
+            "entrance": "fade",
+            "exit": "fade"
+        }
+    }
+]
