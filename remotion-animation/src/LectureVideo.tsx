@@ -1,25 +1,23 @@
 import {
+
     AbsoluteFill,
+
     Audio,
+
     Sequence,
+
     useVideoConfig,
+
 } from "remotion";
 
 import { SceneSlide } from "./scenes/SceneSlide";
-import { Scene } from "./utils/parseSceneContent";
+import { LectureVideoProps } from "./types/scene";
 
-type LectureVideoProps = {
-    audioUrl: string;
-    scenes: Scene[];
-};
-
-export const LectureVideo = ({
-    audioUrl,
-    scenes,
-}: LectureVideoProps) => {
+export const LectureVideo = ({ audioUrl, scenes }: LectureVideoProps) => {
     const { fps } = useVideoConfig();
 
     return (
+
         <AbsoluteFill style={{ backgroundColor: "#0f172a" }}>
             {scenes.map((scene, index) => {
                 const startFrame = Math.round(scene.start * fps);
@@ -27,10 +25,9 @@ export const LectureVideo = ({
                     Math.round((scene.end - scene.start) * fps),
                     1
                 );
-
                 return (
                     <Sequence
-                        key={`scene-${index}`}
+                        key={scene.id ?? `scene-${index}`}
                         from={startFrame}
                         durationInFrames={durationInFrames}
                     >
@@ -44,7 +41,9 @@ export const LectureVideo = ({
                 );
             })}
 
-            <Audio src={audioUrl} />
+            {audioUrl ? <Audio src={audioUrl} /> : null}
+
         </AbsoluteFill>
     );
 };
+
