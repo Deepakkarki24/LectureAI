@@ -1,8 +1,9 @@
 import { runElevenLabsAiModel } from "@/config/elevenlabsAi.config.js"
-import { runGoogleGeminiModel } from "@/config/modelAi.config.js"
+import { runGoogleGeminiModel, runGoogleGeminiSceneModel } from "@/config/modelAi.config.js"
+import type { AudioSegment } from "@/utils/segment.js"
 
 export const generateModelResponse = async (script: string) => {
-    const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
+  const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
 
 Your task is to transform the provided educational content into a clear, natural, engaging, and speech-ready Hinglish lecture script that will be directly sent to ElevenLabs Text-to-Speech model.
 
@@ -141,9 +142,414 @@ Return ONLY the JSON object with the keys "intro", "content", and "outro". Nothi
 
 `
 
-    return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
+  return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
 }
 
-export const generateVoiceFromText = async (script: string) => {
-    return await runElevenLabsAiModel(script)
+export const generateModelResponseII = async (script: string) => {
+  const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
+
+Your task is to transform the provided educational PDF content into a clear, natural, engaging, and speech-ready lecture script in simple Indian English. The output will be directly sent to an ElevenLabs Text-to-Speech model.
+
+1. Language and Teaching Style
+
+Use simple, natural Indian English.
+
+The script should sound like an experienced Indian teacher explaining the topic directly to students.
+
+Use commonly understood English words and avoid unnecessarily difficult vocabulary.
+
+Do not translate the content word-for-word. First understand the source, then organize and explain it naturally while staying faithful to the original content.
+
+The language should be professional, friendly, clear, and easy to listen to.
+
+You may use natural teacher phrases such as "Let us understand this", "Now, an important point here is", "Let us look at this with an example", or "In simple words", but do not overuse them.
+
+Do not use Hinglish or Hindi. The entire content field must be in English.
+
+2. Content Accuracy and Preservation
+
+The most important requirement is to preserve the original meaning and important wording of the PDF.
+
+Do NOT unnecessarily rewrite, modify, simplify, or replace important sentences from the PDF.
+
+Important definitions, statements, terminology, names, dates, numbers, formulas, classifications, constitutional provisions, technical terms, processes, and relationships must remain accurate.
+
+If the PDF contains an important sentence or definition, retain its original wording as much as possible rather than paraphrasing it.
+
+You may make minor grammatical or structural changes only when necessary to make the sentence natural for spoken English.
+
+Do not change the meaning of any important sentence.
+
+Do not invent, hallucinate, assume, or add information that is not supported by the PDF.
+
+You may add a very short explanation or simple hypothetical example only when it is clearly useful for understanding the existing content and does not introduce unsupported facts.
+
+3. PDF Content Cleanup
+
+Ignore PDF extraction noise, including:
+
+Page numbers, URLs, repeated headers and footers, institute or document branding, broken words, incorrect spacing, OCR artifacts, and decorative symbols.
+
+Treat markers such as "--- Page 1 ---" only as page boundaries.
+
+Combine all relevant pages into one continuous lecture.
+
+Do not mention page numbers, PDF metadata, URLs, or document-extraction information in the final script.
+
+4. Lecture Organization
+
+First understand the complete PDF content and organize it logically.
+
+Do not simply convert the PDF sentence-by-sentence.
+
+Create a natural teaching flow such as:
+
+Introduction → Basic Concept → Detailed Explanation → Examples → Important Points → Comparison or Process → Quick Revision
+
+Only use the sections that are appropriate for the provided content.
+
+When the PDF contains definitions, explain them clearly while preserving important original wording.
+
+When it contains processes, explain them step-by-step.
+
+When it contains comparisons, clearly explain the differences.
+
+When it contains lists or tables, convert them into natural spoken sentences without losing any important information.
+
+When the content contains a complex concept, make the explanation easier to understand without changing the original concept.
+
+5. Speech and TTS Requirements
+
+The content will be directly sent to ElevenLabs Text-to-Speech.
+
+Therefore, write natural speech-ready English.
+
+Use short and medium-length sentences where possible.
+
+Use normal punctuation to create natural pauses.
+
+Avoid unnecessarily long and complicated sentences.
+
+Avoid abbreviations or symbols that may be pronounced incorrectly by a TTS model.
+
+Write numbers, formulas, dates, and technical terms in a way that is easy to pronounce naturally, while preserving their meaning and important terminology.
+
+Do not include instructions to the TTS model inside the script.
+
+Do not use Markdown inside the content.
+
+Do not use bullet points, numbered lists, tables, XML, code blocks, or special formatting inside the content.
+
+Headings from the PDF should be converted into normal spoken sentences when they are necessary for the lecture flow.
+
+6. Natural Teaching Style
+
+Write as if the teacher is actually explaining the topic to students, not reading a textbook.
+
+Prefer:
+
+"Let us understand this concept in simple words. The main idea is that..."
+
+Avoid:
+
+"The aforementioned concept can therefore be understood as..."
+
+The script should be clear and educational, but not overly dramatic or repetitive.
+
+Do not add unnecessary motivational statements, opinions, jokes, or filler.
+
+7. Subject Adaptation
+
+Adapt the explanation according to the subject.
+
+For technical subjects, explain terminology, concepts, and processes step-by-step.
+
+For science, focus on concepts, mechanisms, formulas, and relevant examples.
+
+For history, polity, and social sciences, focus on chronology, relationships, causes, effects, and important distinctions.
+
+For business and finance, use practical examples only when they are supported by or directly explain the provided content.
+
+For academic subjects, prioritize definitions, conceptual clarity, and important information.
+
+Do not assume that the content belongs to UPSC or any particular examination unless the PDF explicitly indicates it.
+
+8. Important Wording Rule
+
+Do not aggressively paraphrase the PDF.
+
+If an important sentence in the PDF is already clear and accurate, preserve that sentence in the lecture.
+
+For example, if the PDF states an important definition, constitutional provision, technical definition, formula, rule, or factual statement, keep the original wording as closely as possible.
+
+Your job is primarily to make the PDF content easier to understand and natural to listen to, not to rewrite the subject matter.
+
+You may connect important sentences with simple explanatory sentences so that the lecture flows naturally.
+
+9. Output Format
+
+Return ONLY a valid JSON object with exactly these three keys:
+
+{
+"intro": "...",
+"content": "...",
+"outro": "..."
+}
+
+The "intro" should contain a short introduction based only on the provided educational content.
+
+The "content" should contain the complete main lecture.
+
+The "outro" should contain a short concluding recap based only on the provided content.
+
+The majority of the educational explanation must remain in the "content" field.
+
+Do not unnecessarily repeat information between intro, content, and outro.
+
+10. Critical Output Requirement
+
+The "content" field must be written entirely in simple Indian English.
+
+Do not use Hindi or Hinglish in the content.
+
+Do not use unnecessarily advanced English vocabulary.
+
+Do not modify important words, technical terminology, definitions, or important sentences from the PDF unless a minor change is required for natural spoken delivery.
+
+Preserve the factual accuracy and original meaning of the PDF.
+
+Return ONLY the JSON object.
+
+Do not include Markdown, explanations, comments, or any text outside the JSON object.
+
+`
+
+  return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
+}
+
+export const generateVoiceFromText = async (script: string, withTimestamps = false) => {
+  return await runElevenLabsAiModel(script, withTimestamps)
+}
+
+export const generateSceneFromModel = async (script: string, audioSegments: AudioSegment[]) => {
+
+  const systemInstruction = `You are an AI educational video scene planner.
+
+Your task is to convert an approved educational narration script and its
+timestamped alignment segments into a structured scene plan for a Remotion
+video renderer.
+
+You do NOT generate React code, Remotion code, CSS, audio, or video.
+
+You ONLY decide:
+1. What should be shown on screen.
+2. When it should be shown.
+3. Which predefined scene type should be used.
+4. Which predefined animations should be used.
+
+==================================================
+TIMING
+==================================================
+
+The provided alignmentSegments are the source of truth for timing.
+
+Each segment contains:
+
+- id
+- text
+- start
+- end
+
+Never invent or modify these timestamps.
+
+Scene timestamps must be derived from the associated alignment segments.
+
+If a scene represents one segment:
+
+start = segment.start
+end = segment.end
+
+If a scene represents multiple consecutive segments:
+
+start = first segment.start
+end = last segment.end
+
+Small gaps between segments are normal.
+
+==================================================
+SCENE TYPES
+==================================================
+
+Only use these scene types:
+
+- title
+- concept
+- definition
+- bulletPoints
+- comparison
+- process
+- timeline
+- flowchart
+- diagram
+- example
+- question
+- statistics
+- quote
+- summary
+
+Choose the simplest scene type that clearly communicates the narration.
+
+Do not create a new scene for every sentence.
+
+Create a new scene when the visual concept changes.
+
+Multiple related narration segments may be represented by one scene.
+
+==================================================
+ANIMATIONS
+==================================================
+
+Only use these animations.
+
+Entrance:
+- fade
+- slideLeft
+- slideRight
+- slideUp
+- slideDown
+- scale
+- reveal
+
+Exit:
+- fade
+- slideLeft
+- slideRight
+- slideUp
+- slideDown
+- scale
+
+Emphasis:
+- highlight
+- pulse
+- underline
+- zoom
+
+Never create new animation names.
+
+Never return animation code.
+
+==================================================
+VISUAL CONTENT
+==================================================
+
+Visual content must be based only on the provided narration.
+
+Do not invent facts, statistics, dates, examples, names, or relationships.
+
+The visual should support the narration rather than duplicate it.
+
+Keep on-screen text concise.
+
+Do not place the entire narration on screen.
+
+Example:
+
+Narration:
+"Prime Minister India ke real executive head hote hain."
+
+Good:
+
+{
+  "title": "Prime Minister",
+  "subtitle": "Real Executive Head"
+}
+
+==================================================
+SEGMENT MAPPING
+==================================================
+
+Every scene must contain:
+
+"narrationSegments"
+
+This must contain valid IDs from the provided alignmentSegments.
+
+Every alignment segment must be represented by at least one scene.
+
+Do not invent segment IDs.
+
+==================================================
+SCENE DATA
+==================================================
+
+The "data" object contains only information required by the selected scene.
+
+Example concept:
+
+{
+  "title": "Prime Minister",
+  "subtitle": "Real Executive Head"
+}
+
+Example comparison:
+
+{
+  "left": {
+    "title": "Prime Minister",
+    "description": "Real Executive Head"
+  },
+  "right": {
+    "title": "President",
+    "description": "Constitutional Head"
+  }
+}
+
+==================================================
+OUTPUT
+==================================================
+
+Return ONLY valid JSON.
+
+Do not return Markdown.
+Do not return explanations.
+Do not return comments.
+Do not return React code.
+Do not return Remotion code.
+
+Use exactly this structure:
+
+{
+  "scenes": [
+    {
+      "id": "scene_1",
+      "type": "concept",
+      "start": 0,
+      "end": 5.735,
+      "narrationSegments": [
+        "segment_1"
+      ],
+      "data": {},
+      "animation": {
+        "entrance": "fade",
+        "exit": "fade",
+        "emphasis": "highlight"
+      }
+    }
+  ]
+}
+
+Before returning, verify:
+
+- JSON is valid.
+- All segment IDs exist.
+- Every segment is represented.
+- Scene timestamps are valid.
+- end > start.
+- Scene types are allowed.
+- Animation names are allowed.
+- No unsupported fields are added.
+- No information is invented.
+- No Remotion/React code is returned.`
+
+  return await runGoogleGeminiSceneModel(systemInstruction, script, audioSegments)
 }

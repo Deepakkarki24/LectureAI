@@ -9,11 +9,11 @@ export const generateLectureVideo = async (
 ) => {
     try {
 
-        const { introAudioUrl, outroAudioUrl, lectureId } = req.body
+        const { introAudioEnglishUrl, outroAudioEnglishUrl, lectureId } = req.body
 
         console.log("Video generate request received!")
 
-        if (!introAudioUrl || !outroAudioUrl) {
+        if (!introAudioEnglishUrl || !outroAudioEnglishUrl) {
             return res.status(400).json({
                 success: false,
                 message: "Audio URL is required"
@@ -23,13 +23,13 @@ export const generateLectureVideo = async (
         const [introVideoId, outroVideoId] = await Promise.all([
             createHeyGenVideo({
                 avatarId: avatar_Id,
-                audioUrl: introAudioUrl,
+                audioUrl: introAudioEnglishUrl,
                 callbackId: lectureId
             }),
 
             createHeyGenVideo({
                 avatarId: avatar_Id,
-                audioUrl: outroAudioUrl,
+                audioUrl: outroAudioEnglishUrl,
                 callbackId: lectureId
             })
         ]
