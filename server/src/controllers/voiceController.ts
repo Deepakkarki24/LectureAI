@@ -1,4 +1,6 @@
+import cloudinary from "@/config/cloudinary.config.js";
 import { generateSceneFromModel, generateVoiceFromText } from "@/runner/runner.js";
+import { combineAudioProduction } from "@/services/merge.ffmpeg.js";
 import { errorResponse } from "@/utils/apiResponse.js";
 import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
 import { createSentenceTimestamps, type ElevenLabsAlignment } from "@/utils/segment.js";
@@ -20,7 +22,15 @@ export const convertTextToVoice = async (
             pdfName
         } = req.body;
 
-        if (!contentEnglish) {
+        // console.log("intro", intro)
+        // console.log("-------------")
+        // console.log("content", content)
+        // console.log("-------------")
+        // console.log("outro", outro)
+        // console.log("-------------")
+        // console.log("pdf", pdfName)
+
+        if (!intro || !content || !outro || !introEnglish || !contentEnglish || !outroEnglish) {
             return res.status(400).json({
                 success: false,
                 message: "Script is required to convert into audio!",
@@ -37,8 +47,14 @@ export const convertTextToVoice = async (
         const contentEnglishCleanText = cleanTextForTTS(contentEnglish)
         const outroEnglishCleanText = cleanTextForTTS(outroEnglish)
 
-
-        const [introAudio, contentAudio, outroAudio, introAudioEnglish, contentAudioEnglish, outroAudioEnglish] = await Promise.all([
+        const [
+            introAudio,
+            contentAudio,
+            outroAudio,
+            introAudioEnglish,
+            contentAudioEnglish,
+            outroAudioEnglish
+        ] = await Promise.all([
             generateVoiceFromText(introCleanText),
             generateVoiceFromText(contentCleanText),
             generateVoiceFromText(outroCleanText),
@@ -47,6 +63,7 @@ export const convertTextToVoice = async (
             generateVoiceFromText(contentEnglishCleanText, true),
             generateVoiceFromText(outroEnglishCleanText),
         ]);
+
 
         if (!introAudio || !contentAudio || !outroAudio || !introAudioEnglish || !contentAudioEnglish || !outroAudioEnglish) {
             return res.status(500).json({
@@ -88,26 +105,19 @@ export const convertTextToVoice = async (
         // make pdf file name sanitized while removing spaces to store as a assetId in clouds
         const fileName = sanitizeFileName(pdfName)
 
-        // we should combine @intro + @content + @outro audio in one mp3, then store that url in cloud or db
+        // combine @intro + @content + @outro audio in one mp3, then store that url in cloud or db
+        const finalAudioBuffer = await combineAudioProduction(introBuffer, contentBuffer, outroBuffer)
+        console.log("finalAudioBuffer", finalAudioBuffer)
 
-        const [introUpload, contentUpload, outroUpload, introUploadEnglish, contentUploadEnglish, outroUploadEnglish] = await Promise.all([
+        const [finalAudioUpload, introUploadEnglish, contentUploadEnglish, outroUploadEnglish] = await Promise.all([
+
+            // English audio upload
             uploadAudioToCloudinary(
-                introBuffer,
-                `lectures/${fileName}/intro`
+                finalAudioBuffer,
+                `lectures/${fileName}/finalAudio`
             ),
 
-            uploadAudioToCloudinary(
-                contentBuffer,
-                `lectures/${fileName}/content`
-            ),
-
-            uploadAudioToCloudinary(
-                outroBuffer,
-                `lectures/${fileName}/outro`
-            ),
-
-            // English audio uploads
-
+            // Hinglish audio uploads
             uploadAudioToCloudinary(
                 introBufferEnglish,
                 `lectures/${fileName}/intro-eng`
@@ -124,9 +134,7 @@ export const convertTextToVoice = async (
             )
         ]);
 
-        const introUrl = introUpload.secure_url
-        const contentUrl = contentUpload.secure_url
-        const outroUrl = outroUpload.secure_url
+        const finalAudioUrl = finalAudioUpload.secure_url
 
         const introEnglishUrl = introUploadEnglish.secure_url
         const contentEnglishUrl = contentUploadEnglish.secure_url
@@ -140,12 +148,10 @@ export const convertTextToVoice = async (
             success: true,
             message: "Audio generated successfully!",
             audio: {
-                introAudioUrl: introUrl,
-                contentAudioUrl: contentUrl,
-                outroAudioUrl: outroUrl,
                 introEnglishAudioUrl: introEnglishUrl,
                 contentEnglishAudioUrl: contentEnglishUrl,
-                outroEnglishAudioUrl: outroEnglishUrl
+                outroEnglishAudioUrl: outroEnglishUrl,
+                finalAudioUrlHinglish: finalAudioUrl
             },
             scenes
         });

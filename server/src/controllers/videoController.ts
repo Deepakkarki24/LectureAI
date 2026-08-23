@@ -2,8 +2,6 @@ import { avatar_Id } from "@/config/model.js"
 import { createHeyGenVideo } from "@/services/heygen.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
 import type { Request, Response } from "express"
-import cloudinary from "@/config/cloudinary.config.js";
-import { renderLectureVideo } from "remotion-animation";
 import { renderVideoAnimation } from "@/services/renderAnimationVideo.js";
 
 export const generateLectureVideo = async (
@@ -21,7 +19,12 @@ export const generateLectureVideo = async (
 
         console.log("Video generate request received!")
 
-        if (!introAudioEnglishUrl || !contentAudioEnglishUrl || !outroAudioEnglishUrl) {
+        if (!introAudioEnglishUrl
+            || !contentAudioEnglishUrl
+            || !outroAudioEnglishUrl
+            || !scenes
+            || !lectureId
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Audio URL is required"
@@ -45,14 +48,21 @@ export const generateLectureVideo = async (
 
         if (!introVideoId || !outroVideoId) return errorResponse(res, 400, "Error while generating videos")
 
+        // Store @introVideoId and @outroVideoId in Database, videoId requires to getting the videoUrl once heygen creates video it sends the videoUrl with the help of videoId using webhook
+        
+        // Save IDs to DB immediately
+        // await db.lectures.update(lectureId, {
+        //     introVideoId,
+        //     outroVideoId,
+        //     status: 'processing'
+        // })
+
         // Generates animation from pdf content with remotion
         const remotionResponse = await renderVideoAnimation(contentAudioEnglishUrl, scenes)
 
         if (!remotionResponse) return errorResponse(res, 402, "Error while render video from remotion")
 
         console.log("Video Id generated!")
-
-        // Store @introVideoId and @outroVideoId in Database, videoId requires to getting the videoUrl once heygen creates video it sends the videoUrl with the help of videoId using webhook
 
         return res.status(200).json({
             success: true,

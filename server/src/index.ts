@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import { MONGODB_URI, NODE_ENV, PORT } from '@/config/env.js'
-// import { connectDatabase, connectMongoDBAtlas } from '@/config/db.js'
+import { connectDatabase, connectMongoDBAtlas } from '@/config/db.js'
 import pdfRoutes from "@/routes/pdf.routes.js"
 import audioRoutes from "@/routes/audio.routes.js"
 import videoRoutes from "@/routes/video.routes.js"
@@ -10,11 +10,11 @@ import { heygenWebhook } from './utils/heyGenWebhook.js'
 const app = express()
 const port = Number(PORT) || 3000
 
-// if (NODE_ENV !== 'Production') {
-//   connectDatabase(MONGODB_URI || '')
-// } else {
-//   connectMongoDBAtlas()
-// }
+if (NODE_ENV !== 'Production') {
+  connectDatabase(MONGODB_URI || '')
+} else {
+  connectMongoDBAtlas()
+}
 
 app.use(
   cors({
