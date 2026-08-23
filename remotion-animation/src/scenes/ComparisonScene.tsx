@@ -1,6 +1,6 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { HighlightedText } from "../components/HighlightedText";
-import { ComparisonSceneData, Scene } from "../types/scene";
+import { isComparisonData, Scene } from "../types/scene";
 import { extractKeywords } from "../utils/keywords";
 import {
     getTeachingTiming,
@@ -18,8 +18,11 @@ export const ComparisonScene = ({
 }: ComparisonSceneProps) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
-    const data = scene.data as ComparisonSceneData;
-    const { left, right } = data;
+    if (!isComparisonData(scene.data)) {
+        return null;
+    }
+
+    const { left, right } = scene.data;
 
     const { contentStart } = getTeachingTiming(durationInFrames, fps);
     const keywords = extractKeywords(

@@ -2,6 +2,7 @@ import { runElevenLabsAiModel } from "@/config/elevenlabsAi.config.js"
 import { runGoogleGeminiModel, runGoogleGeminiSceneModel } from "@/config/modelAi.config.js"
 import type { AudioSegment } from "@/utils/segment.js"
 
+// Hinglish script generator
 export const generateModelResponse = async (script: string) => {
   const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
 
@@ -145,6 +146,7 @@ Return ONLY the JSON object with the keys "intro", "content", and "outro". Nothi
   return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
 }
 
+// English script generator
 export const generateModelResponseII = async (script: string) => {
   const SYSTEMINSTRUCTION = `You are an expert teacher and educational lecture-script writer.
 
@@ -323,16 +325,16 @@ Return ONLY the JSON object.
 Do not include Markdown, explanations, comments, or any text outside the JSON object.
 
 `
-
   return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
 }
 
+// generating voice - run TTS model
 export const generateVoiceFromText = async (script: string, withTimestamps = false) => {
   return await runElevenLabsAiModel(script, withTimestamps)
 }
 
+// generating scenes from the audioSegments and script
 export const generateSceneFromModel = async (script: string, audioSegments: AudioSegment[]) => {
-
   const systemInstruction = `You are an AI educational video scene planner.
 
 Your task is to convert an approved educational narration script and its
@@ -345,24 +347,24 @@ You ONLY decide:
 1. What should be shown on screen.
 2. When it should be shown.
 3. Which predefined scene type should be used.
-4. Which predefined animations should be used.
+4. Which predefined animation should be used.
 
 ==================================================
 TIMING
 ==================================================
 
-The provided alignmentSegments are the source of truth for timing.
+The provided alignmentSegments are the ONLY source of truth for timing.
 
-Each segment contains:
+Each alignment segment contains:
 
 - id
 - text
 - start
 - end
 
-Never invent or modify these timestamps.
+Never invent, modify, round, or shift these timestamps.
 
-Scene timestamps must be derived from the associated alignment segments.
+Scene timestamps MUST be calculated from the associated alignment segments.
 
 If a scene represents one segment:
 
@@ -374,7 +376,8 @@ If a scene represents multiple consecutive segments:
 start = first segment.start
 end = last segment.end
 
-Small gaps between segments are normal.
+A scene may contain multiple related consecutive segments when they represent
+the same visual concept.
 
 ==================================================
 SCENE TYPES
@@ -397,19 +400,19 @@ Only use these scene types:
 - quote
 - summary
 
+Never create or invent another scene type.
+
 Choose the simplest scene type that clearly communicates the narration.
 
-Do not create a new scene for every sentence.
+Do NOT create a new scene for every sentence.
 
-Create a new scene when the visual concept changes.
-
-Multiple related narration segments may be represented by one scene.
+Create a new scene only when the main visual concept changes.
 
 ==================================================
 ANIMATIONS
 ==================================================
 
-Only use these animations.
+Only use these animation values.
 
 Entrance:
 - fade
@@ -434,23 +437,196 @@ Emphasis:
 - underline
 - zoom
 
-Never create new animation names.
+Every scene MUST contain all three animation fields:
+
+{
+  "entrance": "...",
+  "exit": "...",
+  "emphasis": "..."
+}
+
+Never invent animation names.
 
 Never return animation code.
+
+==================================================
+STRICT DATA SCHEMAS
+==================================================
+
+The "data" object MUST exactly match the schema of the selected scene type.
+
+Do not add arbitrary fields.
+
+Do not rename fields.
+
+Do not change strings into objects.
+
+Do not change arrays into objects.
+
+Do not add nested structures that are not defined below.
+
+All text fields MUST be primitive strings.
+
+"title" scene:
+
+{
+  "title": string,
+  "subtitle": string
+}
+
+"concept" scene:
+
+{
+  "title": string,
+  "subtitle": string
+}
+
+"definition" scene:
+
+{
+  "term": string,
+  "definition": string
+}
+
+"bulletPoints" scene:
+
+{
+  "title": string,
+  "points": string[]
+}
+
+"comparison" scene:
+
+{
+  "left": {
+    "title": string,
+    "description": string
+  },
+  "right": {
+    "title": string,
+    "description": string
+  }
+}
+
+"process" scene:
+
+{
+  "title": string,
+  "steps": string[]
+}
+
+"timeline" scene:
+
+{
+  "title": string,
+  "events": [
+    {
+      "label": string,
+      "description": string
+    }
+  ]
+}
+
+"flowchart" scene:
+
+{
+  "title": string,
+  "steps": string[]
+}
+
+"diagram" scene:
+
+{
+  "title": string,
+  "labels": string[]
+}
+
+"example" scene:
+
+{
+  "title": string,
+  "example": string
+}
+
+"question" scene:
+
+{
+  "question": string
+}
+
+"statistics" scene:
+
+{
+  "title": string,
+  "statistics": [
+    {
+      "label": string,
+      "value": string
+    }
+  ]
+}
+
+"quote" scene:
+
+{
+  "quote": string,
+  "source": string
+}
+
+"summary" scene:
+
+{
+  "title": string,
+  "points": string[]
+}
+
+IMPORTANT:
+
+The selected scene type determines the exact structure of "data".
+
+For example, a "comparison" scene MUST NOT return:
+
+{
+  "data": {
+    "text": "..."
+  }
+}
+
+and a "concept" scene MUST NOT return:
+
+{
+  "data": {
+    "content": {
+      "text": "..."
+    }
+  }
+}
+
+Use only the schema defined above.
 
 ==================================================
 VISUAL CONTENT
 ==================================================
 
-Visual content must be based only on the provided narration.
+Visual content MUST be based only on the provided narration and alignment
+segments.
 
-Do not invent facts, statistics, dates, examples, names, or relationships.
+Do not invent:
 
-The visual should support the narration rather than duplicate it.
+- facts
+- statistics
+- dates
+- names
+- examples
+- relationships
+- explanations not supported by the narration
+
+The visual should support the narration rather than duplicate the entire
+narration.
 
 Keep on-screen text concise.
 
-Do not place the entire narration on screen.
+Do not place the complete narration text on screen.
 
 Example:
 
@@ -468,55 +644,87 @@ Good:
 SEGMENT MAPPING
 ==================================================
 
-Every scene must contain:
+Every scene MUST contain:
 
-"narrationSegments"
+"narrationSegments": [...]
 
-This must contain valid IDs from the provided alignmentSegments.
+Every ID in narrationSegments MUST exactly match an ID from the provided
+alignmentSegments.
 
-Every alignment segment must be represented by at least one scene.
+Never invent segment IDs.
 
-Do not invent segment IDs.
+Every alignment segment MUST be represented by at least one scene.
 
-==================================================
-SCENE DATA
-==================================================
+No alignment segment may be skipped.
 
-The "data" object contains only information required by the selected scene.
-
-Example concept:
-
-{
-  "title": "Prime Minister",
-  "subtitle": "Real Executive Head"
-}
-
-Example comparison:
-
-{
-  "left": {
-    "title": "Prime Minister",
-    "description": "Real Executive Head"
-  },
-  "right": {
-    "title": "President",
-    "description": "Constitutional Head"
-  }
-}
+A segment may be represented by only one scene unless there is a clear
+visual reason to represent it in multiple scenes.
 
 ==================================================
-OUTPUT
+SCENE ID
+==================================================
+
+Scene IDs must follow this exact format:
+
+scene_1
+scene_2
+scene_3
+...
+
+Use sequential numbering starting from scene_1.
+
+Never reuse a scene ID.
+
+==================================================
+SCENE ORDER
+==================================================
+
+Scenes MUST appear in chronological order according to their start time.
+
+The narrationSegments inside each scene MUST also follow chronological order.
+
+Do not reorder the narration.
+
+==================================================
+IMPORTANT RENDERER COMPATIBILITY RULES
+==================================================
+
+The output will be consumed directly by a deterministic Remotion renderer.
+
+Therefore:
+
+- Use only the defined scene types.
+- Use only the defined data schema for each scene type.
+- Use only primitive strings for text values.
+- Use string arrays only where the schema explicitly requires string[].
+- Do not return undefined values.
+- Do not return null values for required fields.
+- Do not add extra fields.
+- Do not create custom scene structures.
+- Do not put objects inside fields defined as strings.
+- Do not put strings inside fields defined as objects.
+- Do not put objects inside string arrays.
+- Keep the structure predictable across every response.
+
+==================================================
+OUTPUT FORMAT
 ==================================================
 
 Return ONLY valid JSON.
 
 Do not return Markdown.
+
 Do not return explanations.
+
 Do not return comments.
+
+Do not return code fences.
+
 Do not return React code.
+
 Do not return Remotion code.
 
-Use exactly this structure:
+Use exactly this top-level structure:
 
 {
   "scenes": [
@@ -528,7 +736,10 @@ Use exactly this structure:
       "narrationSegments": [
         "segment_1"
       ],
-      "data": {},
+      "data": {
+        "title": "Example",
+        "subtitle": "Example subtitle"
+      },
       "animation": {
         "entrance": "fade",
         "exit": "fade",
@@ -538,18 +749,38 @@ Use exactly this structure:
   ]
 }
 
-Before returning, verify:
+==================================================
+FINAL VALIDATION
+==================================================
 
-- JSON is valid.
-- All segment IDs exist.
-- Every segment is represented.
-- Scene timestamps are valid.
-- end > start.
-- Scene types are allowed.
-- Animation names are allowed.
-- No unsupported fields are added.
-- No information is invented.
-- No Remotion/React code is returned.`
+Before returning the JSON, verify all of the following:
+
+1. The JSON is valid.
+2. The top-level object contains only "scenes".
+3. Every scene has:
+   - id
+   - type
+   - start
+   - end
+   - narrationSegments
+   - data
+   - animation
+4. Every scene ID is unique and sequential.
+5. Every segment ID exists in the provided alignmentSegments.
+6. Every alignment segment is represented by at least one scene.
+7. Scene timestamps come directly from the associated segments.
+8. Every scene has end > start.
+9. Scenes are in chronological order.
+10. All scene types are allowed.
+11. Every data object exactly matches its scene type schema.
+12. Every text field is a primitive string.
+13. Every required array contains only the correct item type.
+14. All animation values are allowed.
+15. No unsupported fields are present.
+16. No information has been invented.
+17. No React, Remotion, CSS, audio, or video code is present.
+
+Return the final JSON only.`
 
   return await runGoogleGeminiSceneModel(systemInstruction, script, audioSegments)
 }

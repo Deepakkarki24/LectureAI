@@ -3,6 +3,9 @@ import { Scene } from "../types/scene";
 import { BulletPointsScene } from "./BulletPointsScene";
 import { ComparisonScene } from "./ComparisonScene";
 import { ConceptScene } from "./ConceptScene";
+import { DefinitionScene } from "./DefinitionScene";
+import { ProcessScene } from "./ProcessScene";
+import { QuestionScene } from "./QuestionScene";
 
 type SceneSlideProps = {
     scene: Scene;
@@ -25,10 +28,20 @@ const renderSceneContent = (scene: Scene, durationInFrames: number) => {
             return (
                 <BulletPointsScene scene={scene} durationInFrames={durationInFrames} />
             );
-        default:
+        case "definition":
             return (
-                <ConceptScene scene={scene} durationInFrames={durationInFrames} />
+                <DefinitionScene scene={scene} durationInFrames={durationInFrames} />
             );
+        case "process":
+            return (
+                <ProcessScene scene={scene} durationInFrames={durationInFrames} />
+            );
+        case "question":
+            return (
+                <QuestionScene scene={scene} durationInFrames={durationInFrames} />
+            );
+        default:
+            return null;
     }
 };
 

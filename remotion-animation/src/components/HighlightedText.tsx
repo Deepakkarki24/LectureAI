@@ -9,13 +9,25 @@ export const HighlightedText = ({
     keywords,
     highlightOpacity = 1,
 }: HighlightedTextProps) => {
+
+    if (typeof text !== "string") {
+        return null;
+    }
+
     if (keywords.length === 0) {
         return <>{text}</>;
     }
 
-    const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+    const sortedKeywords = [...keywords].sort(
+        (a, b) => b.length - a.length
+    );
+
     const pattern = new RegExp(
-        `(${sortedKeywords.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
+        `(${sortedKeywords
+            .map((kw) =>
+                kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+            )
+            .join("|")})`,
         "gi"
     );
 
@@ -25,11 +37,16 @@ export const HighlightedText = ({
         <>
             {parts.map((part, index) => {
                 const isKeyword = sortedKeywords.some(
-                    (kw) => kw.toLowerCase() === part.toLowerCase()
+                    (kw) =>
+                        kw.toLowerCase() === part.toLowerCase()
                 );
 
                 if (!isKeyword) {
-                    return <span key={index}>{part}</span>;
+                    return (
+                        <span key={index}>
+                            {part}
+                        </span>
+                    );
                 }
 
                 return (
@@ -38,7 +55,9 @@ export const HighlightedText = ({
                         style={{
                             color: "#fbbf24",
                             fontWeight: 700,
-                            backgroundColor: `rgba(251, 191, 36, ${0.15 * highlightOpacity})`,
+                            backgroundColor: `rgba(251, 191, 36, ${
+                                0.15 * highlightOpacity
+                            })`,
                             padding: "2px 6px",
                             borderRadius: 4,
                         }}

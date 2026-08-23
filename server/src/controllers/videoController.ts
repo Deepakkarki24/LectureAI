@@ -2,20 +2,26 @@ import { avatar_Id } from "@/config/model.js"
 import { createHeyGenVideo } from "@/services/heygen.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
 import type { Request, Response } from "express"
-import { spawn } from "child_process";
-import path from "path";
 import cloudinary from "@/config/cloudinary.config.js";
+import { renderLectureVideo } from "remotion-animation";
+import { renderVideoAnimation } from "@/services/renderAnimationVideo.js";
 
 export const generateLectureVideo = async (
     req: Request,
     res: Response
 ) => {
     try {
-        const { introAudioEnglishUrl, outroAudioEnglishUrl, lectureId } = req.body
+        const {
+            introAudioEnglishUrl,
+            contentAudioEnglishUrl,
+            outroAudioEnglishUrl,
+            scenes,
+            lectureId
+        } = req.body
 
         console.log("Video generate request received!")
 
-        if (!introAudioEnglishUrl || !outroAudioEnglishUrl) {
+        if (!introAudioEnglishUrl || !contentAudioEnglishUrl || !outroAudioEnglishUrl) {
             return res.status(400).json({
                 success: false,
                 message: "Audio URL is required"
@@ -39,7 +45,12 @@ export const generateLectureVideo = async (
 
         if (!introVideoId || !outroVideoId) return errorResponse(res, 400, "Error while generating videos")
 
-        console.log("Video generated!")
+        // Generates animation from pdf content with remotion
+        const remotionResponse = await renderVideoAnimation(contentAudioEnglishUrl, scenes)
+
+        if (!remotionResponse) return errorResponse(res, 402, "Error while render video from remotion")
+
+        console.log("Video Id generated!")
 
         // Store @introVideoId and @outroVideoId in Database, videoId requires to getting the videoUrl once heygen creates video it sends the videoUrl with the help of videoId using webhook
 
@@ -48,6 +59,7 @@ export const generateLectureVideo = async (
             message: "Video generation started",
             introVideoId,
             outroVideoId,
+            remotionResponse
         })
 
     } catch (error: any) {
@@ -64,78 +76,52 @@ export const generateLectureVideo = async (
     }
 }
 
-export const renderVideo = async (
-    req: Request,
-    res: Response
-) => {
-    try {
-        const remotionPath = path.resolve(
-            process.cwd(),
-            "../remotion-animation"
-        );
+// export const renderVideo = async (
+//     req: Request,
+//     res: Response
+// ) => {
+//     try {
+//         const { audioUrl } = req.body ?? {};
 
-        const outputPath = path.join(
-            remotionPath,
-            "out",
-            "video.mp4"
-        );
+//         const scenes = JSON.parse(req.body.scenes)
 
-        const renderProcess = spawn(
-            "npx",
-            ["tsx", "run-render.ts"],
-            {
-                cwd: remotionPath,
-                shell: true,
-            }
-        );
+//         console.log("scenes:", scenes);
+//         console.log("isArray:", Array.isArray(scenes));
 
-        renderProcess.stdout.on("data", (data) => {
-            console.log(`[Remotion]: ${data}`);
-        });
+//         const outputPath = await renderLectureVideo(
+//             scenes || audioUrl
+//                 ? {
+//                     inputProps: {
+//                         ...(scenes ? { scenes } : {}),
+//                         ...(audioUrl ? { audioUrl } : {}),
+//                     },
+//                 }
+//                 : {},
+//         );
 
-        renderProcess.stderr.on("data", (data) => {
-            console.error(`[Remotion]: ${data}`);
-        });
+//         console.log("Remotion video generated.");
 
-        renderProcess.on("close", async (code) => {
-            if (code !== 0) {
-                console.error(
-                    `Remotion process exited with code ${code}`
-                );
-                return;
-            }
+//         const result = await cloudinary.uploader.upload(
+//             outputPath,
+//             {
+//                 resource_type: "video",
+//                 folder: "lecture-videos",
+//             }
+//         );
 
-            console.log("Remotion video generated.");
+//         if (!result) return errorResponse(res, 499, "Error while uploading the video!")
 
-            try {
-                const result = await cloudinary.uploader.upload(
-                    outputPath,
-                    {
-                        resource_type: "video",
-                        folder: "lecture-videos",
-                    }
-                );
+//         const secure_url = result.secure_url
 
-                if (!result) return errorResponse(res, 499, "Error while uploading the video!")
+//         console.log("Video uploaded successfully.");
 
-                const secure_url = result.secure_url
+//         return successResponse(res, 200, secure_url, "Vido rendered successfully.")
+//     } catch (error) {
+//         console.error("Video generation error:", error);
 
-                console.log("Video uploaded successfully.");
-
-                return successResponse(res, 200, secure_url, "Vido rendered successfully.")
-            } catch (error) {
-                console.error(
-                    "Cloudinary upload failed:",
-                    error
-                );
-            }
-        });
-    } catch (error) {
-        console.error("Video generation error:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Failed to start video generation",
-        });
-    }
-};
+//         return res.status(500).json({
+//             success: false,
+//             message: "Failed to start video generation",
+//         });
+//     }
+// };

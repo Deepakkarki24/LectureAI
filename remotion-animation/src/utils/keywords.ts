@@ -21,8 +21,9 @@ export const extractKeywords = (text: string, extras: string[] = []): string[] =
     }
 
     const quoteMatch = text.match(/'([^']+)'|"([^"]+)"/);
-    if (quoteMatch) {
-        found.add(quoteMatch[1] || quoteMatch[2]);
+    const quoted = quoteMatch?.[1] ?? quoteMatch?.[2];
+    if (quoted) {
+        found.add(quoted);
     }
 
     for (const extra of extras) {

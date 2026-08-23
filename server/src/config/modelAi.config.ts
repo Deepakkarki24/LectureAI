@@ -1,12 +1,12 @@
 import {
     GoogleGenAI,
-    ThinkingLevel,
-    Type,
 } from '@google/genai';
 import { GOOGLE_API_KEY, OPENAI_API_KEY } from './env.js';
 import { gemini2Dot5Flash, gpt5Mini } from './model.js';
 import OpenAI from "openai";
 import type { AudioSegment } from '@/utils/segment.js';
+import { scenePlanSchema, type ScenePlan } from '@/validators/scene.shema.js';
+import { validateScenePlanAgainstSegments } from '@/validators/validateScenePlan.js';
 
 export interface LectureScript {
     intro: string;
@@ -14,49 +14,11 @@ export interface LectureScript {
     outro: string;
 }
 
-export interface ScenePlan {
-    scenes: Scene[];
-}
-
-export interface Scene {
-    id: string;
-    type:
-    | "title"
-    | "concept"
-    | "definition"
-    | "bulletPoints"
-    | "comparison"
-    | "process"
-    | "timeline"
-    | "flowchart"
-    | "diagram"
-    | "example"
-    | "question"
-    | "statistics"
-    | "quote"
-    | "summary";
-
-    start: number;
-    end: number;
-
-    narrationSegments: string[];
-
-    data: Record<string, any>;
-
-    animation: {
-        entrance?: string;
-        exit?: string;
-        emphasis?: string;
-    };
-}
-
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const runGoogleGeminiModel = async (
     systemInstruction: string,
     script: string,
-    audioSegment?: AudioSegment[]
 ) => {
     try {
         const ai = new GoogleGenAI({
@@ -171,37 +133,6 @@ export const runGoogleGeminiModel = async (
     }
 };
 
-
-export const runOpenAiModel = async (systemInstruction: string, script: string) => {
-    const openai = new OpenAI({
-        apiKey: OPENAI_API_KEY,
-    });
-
-    const model = gpt5Mini
-
-    const config = {
-        text: {
-            format: {
-                type: "text",
-            },
-            verbosity: "medium",
-        },
-
-        reasoning: {
-            effort: "medium",
-            mode: "standard",
-        },
-    } as const
-
-    const response = await openai.responses.create({
-        model,
-        instructions: systemInstruction,
-        input: script,
-        ...config,
-    })
-
-}
-
 export const runGoogleGeminiSceneModel = async (
     systemInstruction: string,
     script: string,
@@ -258,61 +189,69 @@ export const runGoogleGeminiSceneModel = async (
                     );
                 }
 
-                let parsedResult: ScenePlan;
+                // --------------------------------
+                // STEP 1: Parse JSON
+                // --------------------------------
+
+                let rawResult: unknown;
 
                 try {
-                    parsedResult = JSON.parse(finalResult);
+                    rawResult = JSON.parse(finalResult);
                 } catch {
                     throw new Error(
                         "Gemini returned invalid JSON"
                     );
                 }
 
-                if (
-                    !parsedResult ||
-                    !Array.isArray(parsedResult.scenes)
-                ) {
+                // --------------------------------
+                // STEP 2: ZOD VALIDATION
+                // --------------------------------
+
+                const validationResult =
+                    scenePlanSchema.safeParse(rawResult);
+
+                if (!validationResult.success) {
+                    console.error(
+                        "Scene schema validation failed:"
+                    );
+
+                    console.error(
+                        validationResult.error.format()
+                    );
+
                     throw new Error(
-                        "Gemini response does not contain scenes array"
+                        `Invalid scene structure: ${validationResult.error.message}`
                     );
                 }
 
-                // validating the scene in depth
-                for (const scene of parsedResult.scenes) {
+                const parsedResult: ScenePlan =
+                    validationResult.data;
 
-                    if (!scene.id) {
-                        throw new Error("Scene ID missing");
-                    }
+                console.log(
+                    "✅ Scene schema validation successful"
+                );
 
-                    if (!scene.type) {
-                        throw new Error("Scene type missing");
-                    }
+                // --------------------------------
+                // STEP 3: Validate against
+                //         audioSegments
+                // --------------------------------
 
-                    if (
-                        typeof scene.start !== "number" ||
-                        typeof scene.end !== "number"
-                    ) {
-                        throw new Error(
-                            `Invalid timestamps for ${scene.id}`
-                        );
-                    }
+                validateScenePlanAgainstSegments(
+                    parsedResult,
+                    audioSegments
+                );
 
-                    if (!Array.isArray(scene.narrationSegments)) {
-                        throw new Error(
-                            `narrationSegments missing for ${scene.id}`
-                        );
-                    }
+                console.log(
+                    "✅ Scene segment validation successful"
+                );
 
-                    if (!scene.data) {
-                        throw new Error(
-                            `Scene data missing for ${scene.id}`
-                        );
-                    }
-                }
+                // --------------------------------
+                // STEP 4: Return validated scenes
+                // --------------------------------
 
                 return {
                     success: true,
-                    scenes: parsedResult,
+                    scenes: parsedResult.scenes,
                     message: "Scene plan generated",
                     service: "google",
                     err: "",
@@ -365,3 +304,33 @@ export const runGoogleGeminiSceneModel = async (
         };
     }
 };
+
+export const runOpenAiModel = async (systemInstruction: string, script: string) => {
+    const openai = new OpenAI({
+        apiKey: OPENAI_API_KEY,
+    });
+
+    const model = gpt5Mini
+
+    const config = {
+        text: {
+            format: {
+                type: "text",
+            },
+            verbosity: "medium",
+        },
+
+        reasoning: {
+            effort: "medium",
+            mode: "standard",
+        },
+    } as const
+
+    const response = await openai.responses.create({
+        model,
+        instructions: systemInstruction,
+        input: script,
+        ...config,
+    })
+
+}

@@ -1,28 +1,30 @@
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { HighlightedText } from "../components/HighlightedText";
-import { isConceptData, Scene } from "../types/scene";
+import { isDefinitionData, Scene } from "../types/scene";
 import { extractKeywords } from "../utils/keywords";
 import {
     getTeachingTiming,
     useEntranceSpring,
 } from "../utils/sceneAnimations";
 
-type ConceptSceneProps = {
+type DefinitionSceneProps = {
     scene: Scene;
     durationInFrames: number;
 };
 
-export const ConceptScene = ({ scene, durationInFrames }: ConceptSceneProps) => {
+export const DefinitionScene = ({
+    scene,
+    durationInFrames,
+}: DefinitionSceneProps) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
-    if (!isConceptData(scene.data)) {
+    if (!isDefinitionData(scene.data)) {
         return null;
     }
 
     const data = scene.data;
     const { contentStart } = getTeachingTiming(durationInFrames, fps);
-
-    const keywords = extractKeywords(`${data.title} ${data.subtitle}`);
+    const keywords = extractKeywords(`${data.term} ${data.definition}`);
 
     const titleProgress = useEntranceSpring(4, 110);
     const titleScale = interpolate(titleProgress, [0, 1], [0.88, 1]);
@@ -74,7 +76,7 @@ export const ConceptScene = ({ scene, durationInFrames }: ConceptSceneProps) => 
                         marginBottom: 28,
                     }}
                 >
-                    Key Concept
+                    Definition
                 </div>
 
                 <h1
@@ -86,7 +88,7 @@ export const ConceptScene = ({ scene, durationInFrames }: ConceptSceneProps) => 
                     }}
                 >
                     <HighlightedText
-                        text={data.title}
+                        text={data.term}
                         keywords={keywords}
                         highlightOpacity={1}
                     />
@@ -121,7 +123,7 @@ export const ConceptScene = ({ scene, durationInFrames }: ConceptSceneProps) => 
                     }}
                 >
                     <HighlightedText
-                        text={data.subtitle}
+                        text={data.definition}
                         keywords={keywords}
                         highlightOpacity={0.95}
                     />

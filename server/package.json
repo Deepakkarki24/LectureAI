@@ -25,7 +25,9 @@
     "mongoose": "^9.9.2",
     "multer": "^2.2.0",
     "openai": "^6.49.0",
-    "pdfjs-dist": "^5.4.296"
+    "pdfjs-dist": "^5.4.296",
+    "remotion-animation": "file:../remotion-animation",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

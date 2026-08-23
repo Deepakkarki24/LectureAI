@@ -4,3 +4,5 @@
 /.env*
 
 /dist
+/out
+/node_modules/.cache

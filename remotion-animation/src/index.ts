@@ -10,6 +10,9 @@ export type {
     ComparisonSceneData,
     ConceptSceneData,
     BulletPointsSceneData,
+    DefinitionSceneData,
+    ProcessSceneData,
+    QuestionSceneData,
 } from "./types/scene";
 
 registerRoot(RemotionRoot);

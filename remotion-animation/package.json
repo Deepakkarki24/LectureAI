@@ -2,20 +2,40 @@
   "name": "remotion-animation",
   "version": "1.0.0",
   "description": "Dynamic lecture video renderer",
+  "type": "module",
+  "main": "./dist/render.js",
+  "types": "./dist/render.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/render.d.ts",
+      "import": "./dist/render.js",
+      "default": "./dist/render.js"
+    }
+  },
+  "files": [
+    "src",
+    "dist",
+    "render.ts"
+  ],
   "scripts": {
     "start": "remotion studio",
     "build": "remotion render LectureVideo out/video.mp4",
+    "build:node": "tsc -p tsconfig.node.json",
+    "prepare": "npm run build:node",
+    "render": "tsx run-render.ts",
     "upgrade": "remotion upgrade"
   },
   "dependencies": {
-    "@remotion/cli": "^4.0.513",
-    "@remotion/renderer": "^4.0.513",
+    "@remotion/bundler": "4.0.513",
+    "@remotion/cli": "4.0.513",
+    "@remotion/renderer": "4.0.513",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "remotion": "^4.0.513"
+    "remotion": "4.0.513"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
+    "tsx": "^4.23.12",
     "typescript": "^5.8.2"
   }
 }

@@ -22,17 +22,35 @@ export const SceneWrapper = ({
     const sceneOpacity = useSceneOpacity(durationInFrames, animation);
     const progress = clamp(frame / durationInFrames, 0, 1);
 
-    const slideY = interpolate(frame, [0, 12], [animation.entrance === "slide" ? 24 : 0, 0], {
+    const entranceOffset = interpolate(frame, [0, 14], [1, 0], {
         extrapolateLeft: "clamp",
         extrapolateRight: "clamp",
     });
+
+    const entranceTransform = (() => {
+        switch (animation.entrance) {
+            case "slide":
+            case "slideLeft":
+                return `translateX(${-40 * entranceOffset}px)`;
+            case "slideRight":
+                return `translateX(${40 * entranceOffset}px)`;
+            case "slideUp":
+                return `translateY(${40 * entranceOffset}px)`;
+            case "slideDown":
+                return `translateY(${-40 * entranceOffset}px)`;
+            case "scale":
+                return `scale(${0.92 + 0.08 * (1 - entranceOffset)})`;
+            default:
+                return "none";
+        }
+    })();
 
     return (
         <AbsoluteFill
             style={{
                 background: "linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)",
                 opacity: sceneOpacity,
-                transform: `translateY(${slideY}px)`,
+                transform: entranceTransform,
                 fontFamily: "system-ui, -apple-system, sans-serif",
             }}
         >

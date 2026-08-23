@@ -2,7 +2,7 @@ import { generateSceneFromModel, generateVoiceFromText } from "@/runner/runner.j
 import { errorResponse } from "@/utils/apiResponse.js";
 import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
 import { createSentenceTimestamps, type ElevenLabsAlignment } from "@/utils/segment.js";
-import { sanitizeFileName } from "@/utils/utils.js";
+import { cleanTextForTTS, sanitizeFileName } from "@/utils/utils.js";
 import type { Request, Response } from "express";
 
 export const convertTextToVoice = async (
@@ -10,22 +10,42 @@ export const convertTextToVoice = async (
     res: Response
 ) => {
     try {
-        const { intro, content, outro, introEnglish, contentEnglish, outroEnglish, pdfName } = req.body;
+        const {
+            intro,
+            content,
+            outro,
+            introEnglish,
+            contentEnglish,
+            outroEnglish,
+            pdfName
+        } = req.body;
 
-        if (!intro || !content || !outro || !introEnglish || !contentEnglish || !outroEnglish) {
+        if (!contentEnglish) {
             return res.status(400).json({
                 success: false,
                 message: "Script is required to convert into audio!",
             });
         }
 
+        // hinglish
+        const introCleanText = cleanTextForTTS(intro)
+        const contentCleanText = cleanTextForTTS(content)
+        const outroCleanText = cleanTextForTTS(outro)
+
+        // english
+        const introEnglishCleanText = cleanTextForTTS(introEnglish)
+        const contentEnglishCleanText = cleanTextForTTS(contentEnglish)
+        const outroEnglishCleanText = cleanTextForTTS(outroEnglish)
+
+
         const [introAudio, contentAudio, outroAudio, introAudioEnglish, contentAudioEnglish, outroAudioEnglish] = await Promise.all([
-            generateVoiceFromText(intro),
-            generateVoiceFromText(content),
-            generateVoiceFromText(outro),
-            generateVoiceFromText(introEnglish),
-            generateVoiceFromText(contentEnglish, true),
-            generateVoiceFromText(outroEnglish),
+            generateVoiceFromText(introCleanText),
+            generateVoiceFromText(contentCleanText),
+            generateVoiceFromText(outroCleanText),
+
+            generateVoiceFromText(introEnglishCleanText),
+            generateVoiceFromText(contentEnglishCleanText, true),
+            generateVoiceFromText(outroEnglishCleanText),
         ]);
 
         if (!introAudio || !contentAudio || !outroAudio || !introAudioEnglish || !contentAudioEnglish || !outroAudioEnglish) {
@@ -39,8 +59,7 @@ export const convertTextToVoice = async (
 
         if (!reframeAudioSegments) return errorResponse(res, 400, "Error while reframing segments")
 
-        // Store this alignment segments into db
-        console.log("start generating scene from audio segment!")
+        console.log("start generating scene from audio segment...")
 
         const sceneModelResponse = await generateSceneFromModel(contentEnglish, reframeAudioSegments)
 
@@ -49,21 +68,6 @@ export const convertTextToVoice = async (
         if (!sceneModelResponse) return errorResponse(res, 400, "Error while generating scene from model")
 
         const { scenes } = sceneModelResponse
-
-        // Convert all audio responses to buffers
-        // const [
-        //     introArrayBuffer,
-        //     contentArrayBuffer,
-        //     outroArrayBuffer,
-        // ] = await Promise.all([
-        //     new Response(introAudio).arrayBuffer(),
-        //     new Response(contentAudio).arrayBuffer(),
-        //     new Response(outroAudio).arrayBuffer(),
-        // ]);
-
-        // const introBuffer = Buffer.from(introArrayBuffer);
-        // const contentBuffer = Buffer.from(contentArrayBuffer);
-        // const outroBuffer = Buffer.from(outroArrayBuffer);
 
         const introBuffer = introAudio.audioBuffer;
         const contentBuffer = contentAudio.audioBuffer;
@@ -81,8 +85,10 @@ export const convertTextToVoice = async (
         console.log("ContentEnglish audio size:", contentBufferEnglish.length);
         console.log("OutroEnglish audio size:", outroBufferEnglish.length);
 
-        // make file name sanitized while removing spaces to store as a assetId in clouds
+        // make pdf file name sanitized while removing spaces to store as a assetId in clouds
         const fileName = sanitizeFileName(pdfName)
+
+        // we should combine @intro + @content + @outro audio in one mp3, then store that url in cloud or db
 
         const [introUpload, contentUpload, outroUpload, introUploadEnglish, contentUploadEnglish, outroUploadEnglish] = await Promise.all([
             uploadAudioToCloudinary(
@@ -104,17 +110,17 @@ export const convertTextToVoice = async (
 
             uploadAudioToCloudinary(
                 introBufferEnglish,
-                `lectures/${fileName}/outro`
+                `lectures/${fileName}/intro-eng`
             ),
 
             uploadAudioToCloudinary(
                 contentBufferEnglish,
-                `lectures/${fileName}/outro`
+                `lectures/${fileName}/content-eng`
             ),
 
             uploadAudioToCloudinary(
                 outroBufferEnglish,
-                `lectures/${fileName}/outro`
+                `lectures/${fileName}/outro-eng`
             )
         ]);
 

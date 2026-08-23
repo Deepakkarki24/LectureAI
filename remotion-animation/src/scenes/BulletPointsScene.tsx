@@ -1,6 +1,6 @@
 import { useVideoConfig } from "remotion";
 import { HighlightedText } from "../components/HighlightedText";
-import { BulletPointsSceneData, Scene } from "../types/scene";
+import { isBulletPointsData, Scene } from "../types/scene";
 import { extractKeywords } from "../utils/keywords";
 import {
     getTeachingTiming,
@@ -18,7 +18,11 @@ export const BulletPointsScene = ({
     durationInFrames,
 }: BulletPointsSceneProps) => {
     const { fps } = useVideoConfig();
-    const data = scene.data as BulletPointsSceneData;
+    if (!isBulletPointsData(scene.data)) {
+        return null;
+    }
+
+    const data = scene.data;
     const { contentStart, contentDuration } = getTeachingTiming(
         durationInFrames,
         fps

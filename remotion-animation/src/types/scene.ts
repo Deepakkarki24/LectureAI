@@ -1,6 +1,7 @@
 export type SceneAnimation = {
     entrance: string;
     exit: string;
+    emphasis?: string;
 };
 
 export type ComparisonSide = {
@@ -23,44 +24,90 @@ export type BulletPointsSceneData = {
     points: string[];
 };
 
+export type DefinitionSceneData = {
+    term: string;
+    definition: string;
+};
+
+export type ProcessSceneData = {
+    title: string;
+    steps: string[];
+};
+
+export type QuestionSceneData = {
+    question: string;
+};
+
 export type SceneData =
     | ComparisonSceneData
     | ConceptSceneData
     | BulletPointsSceneData
-    | Record<string, unknown>;
+    | DefinitionSceneData
+    | ProcessSceneData
+    | QuestionSceneData;
 
-export type SceneType = "comparison" | "concept" | "bulletPoints" | string;
+export type SceneType =
+    | "comparison"
+    | "concept"
+    | "bulletPoints"
+    | "definition"
+    | "process"
+    | "question";
 
-export type Scene = {
+type SceneBase = {
     id: string;
-    type: SceneType;
     start: number;
     end: number;
     narrationSegments: string[];
-    data: SceneData;
     animation: SceneAnimation;
 };
+
+export type Scene = SceneBase &
+    (
+        | { type: "comparison"; data: ComparisonSceneData }
+        | { type: "concept"; data: ConceptSceneData }
+        | { type: "bulletPoints"; data: BulletPointsSceneData }
+        | { type: "definition"; data: DefinitionSceneData }
+        | { type: "process"; data: ProcessSceneData }
+        | { type: "question"; data: QuestionSceneData }
+    );
 
 export type LectureVideoProps = {
     audioUrl: string;
     scenes: Scene[];
 };
 
-export const isComparisonData = (data: SceneData): data is ComparisonSceneData =>
-    typeof data === "object" &&
-    data !== null &&
-    "left" in data &&
-    "right" in data;
+const isRecord = (data: unknown): data is Record<string, unknown> =>
+    typeof data === "object" && data !== null;
 
-export const isConceptData = (data: SceneData): data is ConceptSceneData =>
-    typeof data === "object" &&
-    data !== null &&
-    "title" in data &&
-    "subtitle" in data &&
-    !("points" in data);
+export const isComparisonData = (
+    data: unknown
+): data is ComparisonSceneData =>
+    isRecord(data) && "left" in data && "right" in data;
 
-export const isBulletPointsData = (data: SceneData): data is BulletPointsSceneData =>
-    typeof data === "object" &&
-    data !== null &&
-    "points" in data &&
-    Array.isArray((data as BulletPointsSceneData).points);
+export const isConceptData = (data: unknown): data is ConceptSceneData =>
+    isRecord(data) &&
+    typeof data.title === "string" &&
+    typeof data.subtitle === "string" &&
+    !("points" in data) &&
+    !("steps" in data);
+
+export const isBulletPointsData = (
+    data: unknown
+): data is BulletPointsSceneData =>
+    isRecord(data) && Array.isArray(data.points);
+
+export const isDefinitionData = (
+    data: unknown
+): data is DefinitionSceneData =>
+    isRecord(data) &&
+    typeof data.term === "string" &&
+    typeof data.definition === "string";
+
+export const isProcessData = (data: unknown): data is ProcessSceneData =>
+    isRecord(data) &&
+    typeof data.title === "string" &&
+    Array.isArray(data.steps);
+
+export const isQuestionData = (data: unknown): data is QuestionSceneData =>
+    isRecord(data) && typeof data.question === "string";
