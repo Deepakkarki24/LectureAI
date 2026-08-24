@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [pageCount, setPageCount] = useState<number | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [isValidating, setIsValidating] = useState(false)
+  const [lectureId, setLectureId] = useState<string | null>(null)
 
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
@@ -123,7 +124,10 @@ export default function Dashboard() {
 
     try {
       const response = await extractPdfContent(pdfFile)
-      setExtractedContent(response)
+      console.log(response)
+      const { content, lectureId } = response as any
+      setExtractedContent(content as string)
+      setLectureId(lectureId as string)
       setHasExtracted(true)
     } catch (error) {
       setExtractError(
@@ -143,7 +147,7 @@ export default function Dashboard() {
     setVoiceReady(false)
 
     try {
-      const generated = await generateAiScript(extractedContent)
+      const generated = await generateAiScript(lectureId as string)
       const { intro, content, outro } = generated
       // console.log("intro", intro)
       // console.log("outro", outro)

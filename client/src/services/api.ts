@@ -19,9 +19,9 @@ export const extractPdfContent = async (file: File) => {
 }
 
 
-export const generateAiScript = async (content: string) => {
+export const generateAiScript = async (lectureId: string) => {
   const formData = new FormData()
-  formData.append('content', content)
+  formData.append('lectureId', lectureId)
 
   const response = await fetch(`${API_BASE_URL}/api/pdf/generate-script`, {
     method: 'POST',
