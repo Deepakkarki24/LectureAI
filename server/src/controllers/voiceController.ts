@@ -1,71 +1,68 @@
-import cloudinary from "@/config/cloudinary.config.js";
+import { Lecture } from "@/models/lecture.model.js";
 import { generateSceneFromModel, generateVoiceFromText } from "@/runner/runner.js";
-import { combineAudioProduction } from "@/services/merge.ffmpeg.js";
 import { errorResponse } from "@/utils/apiResponse.js";
 import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
 import { createSentenceTimestamps, type ElevenLabsAlignment } from "@/utils/segment.js";
 import { cleanTextForTTS, sanitizeFileName } from "@/utils/utils.js";
 import type { Request, Response } from "express";
+import pLimit from "p-limit";
 
 export const convertTextToVoice = async (
     req: Request,
     res: Response
 ) => {
     try {
-        const {
-            intro,
-            content,
-            outro,
-            introEnglish,
-            contentEnglish,
-            outroEnglish,
-            pdfName
-        } = req.body;
+        const { lectureId } = req.body;
 
-        // console.log("intro", intro)
-        // console.log("-------------")
-        // console.log("content", content)
-        // console.log("-------------")
-        // console.log("outro", outro)
-        // console.log("-------------")
-        // console.log("pdf", pdfName)
-
-        if (!intro || !content || !outro || !introEnglish || !contentEnglish || !outroEnglish) {
+        if (!lectureId) {
             return res.status(400).json({
                 success: false,
-                message: "Script is required to convert into audio!",
+                message: "Lecture Id is required!",
             });
         }
 
+        const foundLecture = await Lecture.findById(lectureId)
+
+        if (!foundLecture) return errorResponse(res, 401, "Lecture not found!")
+
+        const { hinglish, english } = foundLecture.script
+        const { pdfName } = foundLecture
+
         // hinglish
-        const introCleanText = cleanTextForTTS(intro)
-        const contentCleanText = cleanTextForTTS(content)
-        const outroCleanText = cleanTextForTTS(outro)
+        const introCleanText = cleanTextForTTS(hinglish.intro)
+        const contentCleanText = cleanTextForTTS(hinglish.content)
+        const outroCleanText = cleanTextForTTS(hinglish.outro)
+
+        const fullCleanHinglishText = [
+            introCleanText,
+            contentCleanText,
+            outroCleanText
+        ].join(" ");
+
 
         // english
-        const introEnglishCleanText = cleanTextForTTS(introEnglish)
-        const contentEnglishCleanText = cleanTextForTTS(contentEnglish)
-        const outroEnglishCleanText = cleanTextForTTS(outroEnglish)
+        const introEnglishCleanText = cleanTextForTTS(english.intro)
+        const contentEnglishCleanText = cleanTextForTTS(english.content)
+        const outroEnglishCleanText = cleanTextForTTS(english.outro)
 
+        // limit the concurrent taks
+        const limit = pLimit(3)
+        
         const [
-            introAudio,
-            contentAudio,
-            outroAudio,
+            hinglishAudio,
             introAudioEnglish,
             contentAudioEnglish,
             outroAudioEnglish
         ] = await Promise.all([
-            generateVoiceFromText(introCleanText),
-            generateVoiceFromText(contentCleanText),
-            generateVoiceFromText(outroCleanText),
+            limit(() => generateVoiceFromText(fullCleanHinglishText, false, true)),
 
-            generateVoiceFromText(introEnglishCleanText),
-            generateVoiceFromText(contentEnglishCleanText, true),
-            generateVoiceFromText(outroEnglishCleanText),
+            limit(() => generateVoiceFromText(introEnglishCleanText)),
+            limit(() => generateVoiceFromText(contentEnglishCleanText, true, false)),
+            limit(() => generateVoiceFromText(outroEnglishCleanText)),
         ]);
 
 
-        if (!introAudio || !contentAudio || !outroAudio || !introAudioEnglish || !contentAudioEnglish || !outroAudioEnglish) {
+        if (!hinglishAudio || !introAudioEnglish || !contentAudioEnglish || !outroAudioEnglish) {
             return res.status(500).json({
                 success: false,
                 message: "Error while generating one or more audio files!",
@@ -78,7 +75,7 @@ export const convertTextToVoice = async (
 
         console.log("start generating scene from audio segment...")
 
-        const sceneModelResponse = await generateSceneFromModel(contentEnglish, reframeAudioSegments)
+        const sceneModelResponse = await generateSceneFromModel(english.content, reframeAudioSegments)
 
         console.log("generating scene completed from audio segment!")
 
@@ -86,17 +83,17 @@ export const convertTextToVoice = async (
 
         const { scenes } = sceneModelResponse
 
-        const introBuffer = introAudio.audioBuffer;
-        const contentBuffer = contentAudio.audioBuffer;
-        const outroBuffer = outroAudio.audioBuffer;
+        if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
+            return errorResponse(res, 400, "Error while generating scene from model")
+        }
+
+        const hinglishBuffer = hinglishAudio.audioBuffer;
 
         const introBufferEnglish = introAudioEnglish.audioBuffer;
         const contentBufferEnglish = contentAudioEnglish.audioBuffer;
         const outroBufferEnglish = outroAudioEnglish.audioBuffer;
 
-        console.log("Intro audio size:", introBuffer.length);
-        console.log("Content audio size:", contentBuffer.length);
-        console.log("Outro audio size:", outroBuffer.length);
+        console.log("hinglish audio size:", hinglishBuffer.length);
 
         console.log("IntroEnglish audio size:", introBufferEnglish.length);
         console.log("ContentEnglish audio size:", contentBufferEnglish.length);
@@ -105,16 +102,12 @@ export const convertTextToVoice = async (
         // make pdf file name sanitized while removing spaces to store as a assetId in clouds
         const fileName = sanitizeFileName(pdfName)
 
-        // combine @intro + @content + @outro audio in one mp3, then store that url in cloud or db
-        const finalAudioBuffer = await combineAudioProduction(introBuffer, contentBuffer, outroBuffer)
-        console.log("finalAudioBuffer", finalAudioBuffer)
+        const [hinglishAudioUpload, introUploadEnglish, contentUploadEnglish, outroUploadEnglish] = await Promise.all([
 
-        const [finalAudioUpload, introUploadEnglish, contentUploadEnglish, outroUploadEnglish] = await Promise.all([
-
-            // English audio upload
+            // Hinglish audio upload
             uploadAudioToCloudinary(
-                finalAudioBuffer,
-                `lectures/${fileName}/finalAudio`
+                hinglishBuffer,
+                `lectures/${fileName}/HinglishAudio`
             ),
 
             // Hinglish audio uploads
@@ -134,15 +127,36 @@ export const convertTextToVoice = async (
             )
         ]);
 
-        const finalAudioUrl = finalAudioUpload.secure_url
+        const hinglishAudioUrl = hinglishAudioUpload.secure_url
 
         const introEnglishUrl = introUploadEnglish.secure_url
         const contentEnglishUrl = contentUploadEnglish.secure_url
         const outroEnglishUrl = outroUploadEnglish.secure_url
 
         /*Note: Store this Url's in the database according to your schema
-
         save url's according to the lecture ids or name whatever you store in schema*/
+
+        await Lecture.findByIdAndUpdate(
+            lectureId,
+            {
+                $set: {
+                    scenes,
+                    audio: {
+                        hinglish: {
+                            finalUrl: hinglishAudioUrl
+                        },
+
+                        english: {
+                            introUrl: introEnglishUrl,
+                            contentUrl: contentEnglishUrl,
+                            outroUrl: outroEnglishUrl,
+                        }
+                    },
+                    status: 'audio_generated'
+
+                }
+            }
+        )
 
         return res.status(200).json({
             success: true,
@@ -151,7 +165,7 @@ export const convertTextToVoice = async (
                 introEnglishAudioUrl: introEnglishUrl,
                 contentEnglishAudioUrl: contentEnglishUrl,
                 outroEnglishAudioUrl: outroEnglishUrl,
-                finalAudioUrlHinglish: finalAudioUrl
+                hinglishAudioUrl: hinglishAudioUrl
             },
             scenes
         });

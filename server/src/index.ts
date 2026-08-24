@@ -27,14 +27,16 @@ app.use(
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
+// app.get("/message", (req, res) => {
+//   res.status(200).json({
+//     success: true,
+//     message: "Hello from my local server through ngrok!"
+//   });
+// });
+
 app.use('/api/pdf', pdfRoutes)
 app.use('/api/text-to-speech', audioRoutes)
 app.use('/api/video', videoRoutes)
-
-// use this with your server base url to run this webhook automatically once the status update
-app.get("https://your-backend.baseurl.com/api/heygen/webhook") //change the url
-
-//  or use https://api.heygen.com/v3/videos/{videoId} in your frontend or postman to get videoStatus and videoUrl once heygen generated
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`)

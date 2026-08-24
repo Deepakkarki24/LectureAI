@@ -19,8 +19,9 @@ const parseScenes = (scenes: unknown): Scene[] => {
 };
 
 // remotion connector
-export const renderVideoAnimation = async (audioUrl: string, scenes: unknown) => {
+export const renderVideoAnimation = async (audioUrl: string, scenes: any, lectureId: string) => {
     try {
+        console.log("Remotion process started!")
         const parsedScenes = parseScenes(scenes);
 
         const outputPath = await renderLectureVideo({
@@ -43,11 +44,12 @@ export const renderVideoAnimation = async (audioUrl: string, scenes: unknown) =>
 
         if (!result) throw Error('Unable to upload video in Cloudinary!')
 
-        const secure_url = result.secure_url
-
         console.log("Video uploaded successfully.");
 
-        return secure_url
+        const secure_url = result.secure_url
+
+        return secure_url;
+
     } catch (error) {
         console.error("Video generation error:", error);
     }

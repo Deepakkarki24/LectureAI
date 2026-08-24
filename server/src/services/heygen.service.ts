@@ -4,7 +4,6 @@ import axios from "axios"
 interface CreateHeyGenVideoParams {
     avatarId: string
     audioUrl: string
-    callbackId: string
 }
 
 interface HeyGenResponse {
@@ -16,7 +15,6 @@ interface HeyGenResponse {
 export const createHeyGenVideo = async ({
     avatarId,
     audioUrl,
-    callbackId
 }: CreateHeyGenVideoParams) => {
 
     console.log("Video generation starts")
@@ -31,7 +29,6 @@ export const createHeyGenVideo = async ({
             output_format: "mp4",
             fit: "contain",
             callback_url: HEYGEN_WEBHOOK_URL,
-            callback_id: callbackId,
             engine: {
                 type: "avatar_iii"
             }

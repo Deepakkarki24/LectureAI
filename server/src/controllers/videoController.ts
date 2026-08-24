@@ -2,75 +2,80 @@ import { avatar_Id } from "@/config/model.js"
 import { createHeyGenVideo } from "@/services/heygen.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
 import type { Request, Response } from "express"
-import { renderVideoAnimation } from "@/services/renderAnimationVideo.js";
+import { Lecture } from "@/models/lecture.model.js";
+import { processRemotion } from "@/utils/remotionProcess.js";
 
 export const generateLectureVideo = async (
     req: Request,
     res: Response
 ) => {
     try {
-        const {
-            introAudioEnglishUrl,
-            contentAudioEnglishUrl,
-            outroAudioEnglishUrl,
-            scenes,
-            lectureId
-        } = req.body
+        const { lectureId } = req.body
 
         console.log("Video generate request received!")
 
-        if (!introAudioEnglishUrl
-            || !contentAudioEnglishUrl
-            || !outroAudioEnglishUrl
-            || !scenes
-            || !lectureId
-        ) {
+        if (!lectureId) {
             return res.status(400).json({
                 success: false,
-                message: "Audio URL is required"
+                message: "Lecture Id is required"
             })
         }
+
+        const foundLecture = await Lecture.findById(lectureId)
+
+        if (!foundLecture) return errorResponse(res, 404, "Lecture not found!")
+
+        const { introUrl, contentUrl, outroUrl } = foundLecture.audio.english
+        const { scenes } = foundLecture
+
+        if (!introUrl || !contentUrl || !outroUrl) return errorResponse(res, 400, "Required audio URLs are not available in DB"
+        )
+
+        if (!scenes) return errorResponse(res, 404, "Scenes not found in DB!")
+
 
         const [introVideoId, outroVideoId] = await Promise.all([
             createHeyGenVideo({
                 avatarId: avatar_Id,
-                audioUrl: introAudioEnglishUrl,
-                callbackId: lectureId
+                audioUrl: introUrl,
             }),
 
             createHeyGenVideo({
                 avatarId: avatar_Id,
-                audioUrl: outroAudioEnglishUrl,
-                callbackId: lectureId
+                audioUrl: outroUrl,
             })
         ]
         )
 
         if (!introVideoId || !outroVideoId) return errorResponse(res, 400, "Error while generating videos")
 
-        // Store @introVideoId and @outroVideoId in Database, videoId requires to getting the videoUrl once heygen creates video it sends the videoUrl with the help of videoId using webhook
-        
         // Save IDs to DB immediately
-        // await db.lectures.update(lectureId, {
-        //     introVideoId,
-        //     outroVideoId,
-        //     status: 'processing'
-        // })
+        await foundLecture.updateOne({
+            $set: {
+                "video.heygen.intro.videoId": introVideoId.data.video_id,
+                "video.heygen.intro.status": "processing",
+
+                "video.heygen.outro.videoId": outroVideoId.data.video_id,
+                "video.heygen.outro.status": "processing",
+
+                status: "video_processing"
+            }
+        });
 
         // Generates animation from pdf content with remotion
-        const remotionResponse = await renderVideoAnimation(contentAudioEnglishUrl, scenes)
-
-        if (!remotionResponse) return errorResponse(res, 402, "Error while render video from remotion")
+        processRemotion(lectureId, contentUrl, scenes)
 
         console.log("Video Id generated!")
 
-        return res.status(200).json({
-            success: true,
-            message: "Video generation started",
-            introVideoId,
-            outroVideoId,
-            remotionResponse
-        })
+        return successResponse(
+            res,
+            200,
+            "Video generation started",
+            {
+                introVideoId,
+                outroVideoId
+            }
+        )
 
     } catch (error: any) {
 

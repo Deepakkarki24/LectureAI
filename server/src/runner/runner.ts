@@ -329,8 +329,8 @@ Do not include Markdown, explanations, comments, or any text outside the JSON ob
 }
 
 // generating voice - run TTS model
-export const generateVoiceFromText = async (script: string, withTimestamps = false) => {
-  return await runElevenLabsAiModel(script, withTimestamps)
+export const generateVoiceFromText = async (script: string, withTimestamps = false, hinglish = false) => {
+  return await runElevenLabsAiModel(script, withTimestamps, hinglish)
 }
 
 // generating scenes from the audioSegments and script

@@ -1,6 +1,8 @@
+import { Lecture } from "@/models/lecture.model.js"
 import { generateModelResponse, generateModelResponseII } from "@/runner/runner.js"
 import { extractPdfText } from "@/services/pdfExtract.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
+import { sanitizeFileName } from "@/utils/utils.js"
 import type { Request, Response } from "express"
 
 // Extract all the content from the uploaded PDF file and return @content
@@ -16,8 +18,6 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
 
         const content = await extractPdfText(req.file.buffer)
 
-        console.log(content)
-
         if (!content) {
             return errorResponse(
                 res,
@@ -26,7 +26,17 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
             )
         }
 
-        return successResponse(res, 200, "Content extracted!", content)
+        const fileName = sanitizeFileName(req.file.originalname)
+
+        const lecture = await Lecture.create({
+            pdfName: fileName,
+            extractedContent: content,
+            status: 'extracted'
+        })
+
+        const lectureId = lecture._id
+
+        return successResponse(res, 200, "Content extracted!", { content, lectureId })
     } catch (error) {
         const message =
             error instanceof Error
@@ -48,17 +58,19 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
  */
 export const generateScript = async (req: Request, res: Response) => {
     try {
-        const { content } = req.body
+        const { lectureId } = req.body
 
-        if (!content) return errorResponse(res, 401, "Script is required!")
+        if (!lectureId) return errorResponse(res, 401, "Lecture id is required!")
 
-        const modelResponse = await generateModelResponse(content)
-        const modelResponseII = await generateModelResponseII(content)
+        const lecture = await Lecture.findById(lectureId)
+
+        const modelResponse = await generateModelResponse(lecture?.extractedContent as string)
+        const modelResponseII = await generateModelResponseII(lecture?.extractedContent as string)
 
         console.log("modelResponse:", modelResponse)
         console.log("modelResponseII:", modelResponseII)
 
-        if (!modelResponse || !modelResponseII) {
+        if (!modelResponse?.success || !modelResponseII?.success) {
             return errorResponse(
                 res,
                 503,
@@ -68,6 +80,29 @@ export const generateScript = async (req: Request, res: Response) => {
 
         const { script } = modelResponse
         const scriptEnglish = modelResponseII.script
+
+        await Lecture.findByIdAndUpdate(
+            lectureId,
+            {
+                $set: {
+                    script: {
+                        hinglish: {
+                            intro: script?.intro,
+                            content: script?.content,
+                            outro: script?.outro
+                        },
+
+                        english: {
+                            intro: scriptEnglish?.intro,
+                            content: scriptEnglish?.content,
+                            outro: scriptEnglish?.outro,
+                        },
+                    },
+                    status: 'script_generated'
+                }
+            },
+            { new: true }
+        )
 
         console.log("modelResponse", script, scriptEnglish)
 

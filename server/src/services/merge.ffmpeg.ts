@@ -3,42 +3,58 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-export const combineAudioProduction = async (
-    introBuffer: Buffer,
-    contentBuffer: Buffer,
-    outroBuffer: Buffer
+export const combineVideosWithFFmpeg = async (
+    intro: string,
+    content: string,
+    outro: string
 ) => {
-    // Write buffers to temp files (ffmpeg needs seekable input for MP3)
+
     const tmpDir = os.tmpdir();
-    const tmpFiles = ["intro", "content", "outro"].map((name) =>
-        path.join(tmpDir, `${name}-${Date.now()}.mp3`)
-    );
 
-    await Promise.all([
-        fs.promises.writeFile(tmpFiles[0] as string, introBuffer),
-        fs.promises.writeFile(tmpFiles[1] as string, contentBuffer),
-        fs.promises.writeFile(tmpFiles[2] as string, outroBuffer),
-    ]);
-
-    const outputPath = path.join(tmpDir, `final-${Date.now()}.mp3`);
-
-    // Concat with ffmpeg (handles VBR headers, ID3 tags, resets timestamps)
-    await new Promise<void>((resolve, reject) => {
-        ffmpeg()
-            .input(`concat:${tmpFiles.join("|")}`)
-            .audioCodec("copy")           // no re-encoding = no quality loss
-            .output(outputPath)
-            .on("end", () => resolve())
-            .on("error", (err) => reject(err))
-            .run();
+    await fs.promises.mkdir(tmpDir, {
+        recursive: true
     });
 
-    const finalBuffer = await fs.promises.readFile(outputPath);
-
-    // Cleanup temp files
-    await Promise.all(
-        [...tmpFiles, outputPath].map((f) => fs.promises.unlink(f).catch(() => { }))
+    const outputPath = path.join(
+        tmpDir,
+        `final_${Date.now()}.mp4`
     );
 
-    return finalBuffer;
+    return new Promise<string>((resolve, reject) => {
+        ffmpeg()
+            .input(intro)
+            .input(content)
+            .input(outro)
+            .complexFilter([
+                // Normalize each stream to same resolution + fps
+                '[0:v]scale=1920:1080,fps=30,setsar=1[v0]',
+                '[1:v]scale=1920:1080,fps=30,setsar=1[v1]',
+                '[2:v]scale=1920:1080,fps=30,setsar=1[v2]',
+                // Concatenate all three
+                '[v0][0:a][v1][1:a][v2][2:a]concat=n=3:v=1:a=1[v][a]'
+            ])
+            .outputOptions([
+                '-map [v]',
+                '-map [a]',
+                '-c:v libx264',
+                '-c:a aac',
+                '-movflags +faststart'
+            ])
+            .output(outputPath)
+            .on('start', (cmd) => {
+                console.log('FFmpeg started:', cmd)
+            })
+            .on('progress', (progress) => {
+                console.log(`FFmpeg progress: ${progress.percent?.toFixed(1)}%`)
+            })
+            .on('end', () => {
+                console.log('FFmpeg combine complete:', outputPath)
+                resolve(outputPath)
+            })
+            .on('error', (err) => {
+                console.error('FFmpeg error:', err.message)
+                reject(new Error(`FFmpeg failed: ${err.message}`))
+            })
+            .run()
+    })
 }

@@ -1,6 +1,8 @@
 import type { Request, Response } from "express"
 import { errorResponse, successResponse } from "./apiResponse.js"
 import cloudinary from "@/config/cloudinary.config.js"
+import { Lecture } from "@/models/lecture.model.js"
+import { checkAndCombineIfReady } from "./remotionProcess.js";
 
 export const heygenWebhook = async (
     req: Request,
@@ -8,51 +10,130 @@ export const heygenWebhook = async (
 ) => {
     try {
 
-        console.log("HeyGen webhook:", req.body)
+        console.log(
+            "HeyGen webhook:",
+            JSON.stringify(req.body, null, 2)
+        );
 
-        const {
-            callback_id,
-            event_type,
-            video_id,
-            status,
-            video_url
-        } = req.body
+        const event_type = req.body.event_type;
 
-        console.log({
-            callback_id,
-            event_type,
-            video_id,
-            status,
-            video_url
-        })
-
-        let secure_url = null
-
-        if (video_url) {
-            const result = await cloudinary.uploader.upload(video_url, {
-                resource_type: "video",
-                folder: "lectures"
-            })
-
-            if (!result) return errorResponse(res, 400, "Error while saving the video")
-
-            secure_url = result.secure_url //this will be store in DB
+        // Ignore GIF events
+        if (event_type !== "avatar_video.success") {
+            return successResponse(
+                res,
+                200,
+                "Webhook event ignored"
+            );
         }
 
+        const video_id = req.body.event_data?.video_id;
+        const video_url = req.body.event_data?.url;
 
-        // Find lecture using callback_id
-        // Update Database with:
-        //
-        // videoId
-        // videoStatus
-        // @secure_url
+        console.log({
+            event_type,
+            video_id,
+            video_url
+        });
 
-        return successResponse(res, 200, "VideoUrl stored in DB!")
+        if (!video_id || !video_url) {
+            return errorResponse(
+                res,
+                400,
+                "Missing video_id or video_url"
+            );
+        }
+
+        const lecture = await Lecture.findOne({
+            $or: [
+                {
+                    "video.heygen.intro.videoId": video_id
+                },
+                {
+                    "video.heygen.outro.videoId": video_id
+                }
+            ]
+        });
+
+        if (!lecture) {
+            return errorResponse(
+                res,
+                404,
+                "Lecture for this video not found"
+            );
+        }
+
+        // -----------------------------
+        // INTRO
+        // -----------------------------
+
+        if (
+            lecture.video.heygen.intro.videoId === video_id
+        ) {
+
+            const result = await cloudinary.uploader.upload(
+                video_url,
+                {
+                    resource_type: "video",
+                    folder: "lectures"
+                }
+            );
+
+            await lecture.updateOne({
+                $set: {
+                    "video.heygen.intro.status": "completed",
+                    "video.heygen.intro.url":
+                        result.secure_url
+                }
+            });
+        }
+
+        // -----------------------------
+        // OUTRO
+        // -----------------------------
+
+        else if (
+            lecture.video.heygen.outro.videoId === video_id
+        ) {
+
+            const result = await cloudinary.uploader.upload(
+                video_url,
+                {
+                    resource_type: "video",
+                    folder: "lectures"
+                }
+            );
+
+            await lecture.updateOne({
+                $set: {
+                    "video.heygen.outro.status": "completed",
+                    "video.heygen.outro.url":
+                        result.secure_url
+                }
+            });
+        }
+
+        // Check if Remotion + intro + outro are ready
+        await checkAndCombineIfReady(
+            lecture._id.toString()
+        );
+
+        return successResponse(
+            res,
+            200,
+            "HeyGen webhook processed successfully"
+        );
 
     } catch (error) {
 
-        console.error("HeyGen webhook error:", error)
+        console.error(
+            "HeyGen webhook error:",
+            error
+        );
 
-        return errorResponse(res, 500, "HeyGen webhook error!")
+        return errorResponse(
+            res,
+            500,
+            "HeyGen webhook error!"
+        );
     }
-}
+};
