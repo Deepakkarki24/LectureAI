@@ -1,8 +1,5 @@
-import {
-    GoogleGenAI,
-} from '@google/genai';
-import { GOOGLE_API_KEY, OPENAI_API_KEY } from './env.js';
-import { gemini2Dot5Flash, gpt5Mini } from './model.js';
+import { OPENAI_API_KEY } from './env.js';
+import { gpt5Mini } from './model.js';
 import OpenAI from "openai";
 import type { AudioSegment } from '@/utils/segment.js';
 import { scenePlanSchema, type ScenePlan } from '@/validators/scene.shema.js';
@@ -16,53 +13,98 @@ export interface LectureScript {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const runGoogleGeminiModel = async (
+const getOpenAiClient = () => {
+    if (!OPENAI_API_KEY) {
+        throw new Error("OPENAI_API_KEY is not configured");
+    }
+
+    return new OpenAI({
+        apiKey: OPENAI_API_KEY,
+    });
+};
+
+const openAiJsonConfig = {
+    text: {
+        format: {
+            type: "json_schema" as const,
+            name: "lecture_script",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    intro: {
+                        type: "string",
+                    },
+                    content: {
+                        type: "string",
+                    },
+                    outro: {
+                        type: "string",
+                    },
+                },
+                required: ["intro", "content", "outro"],
+                additionalProperties: false,
+            },
+        },
+        verbosity: "medium" as const,
+    },
+    reasoning: {
+        effort: "medium" as const,
+    },
+};
+
+const openAiSceneJsonConfig = {
+    text: {
+        format: {
+            type: "json_object" as const,
+        },
+        verbosity: "medium" as const,
+    },
+    reasoning: {
+        effort: "medium" as const,
+    },
+};
+
+const getOpenAiErrorStatus = (err: unknown): number | undefined => {
+    if (err && typeof err === "object" && "status" in err) {
+        const status = (err as { status?: unknown }).status;
+        return typeof status === "number" ? status : undefined;
+    }
+    return undefined;
+};
+
+/**
+ * Generate lecture script JSON `{ intro, content, outro }` via GPT-5 mini.
+ * Drop-in replacement for the previous Gemini script runner.
+ */
+export const runOpenAiModel = async (
     systemInstruction: string,
     script: string,
 ) => {
     try {
-        const ai = new GoogleGenAI({
-            apiKey: GOOGLE_API_KEY || "",
-        });
-
-        const config = {
-            systemInstruction,
-            responseMimeType: "application/json",
-        };
-
-        const model = gemini2Dot5Flash;
-
-        const contents = [
-            {
-                role: "user",
-                parts: [
-                    {
-                        text: script,
-                    },
-                ],
-            },
-        ];
-
+        const openai = getOpenAiClient();
+        const model = gpt5Mini;
         const maxRetries = 2;
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 console.log(
-                    `Gemini Request Attempt ${attempt}/${maxRetries}`
+                    `OpenAI Request Attempt ${attempt}/${maxRetries}`
                 );
 
-                const response = await ai.models.generateContent({
+                const response = await openai.responses.create({
                     model,
-                    config,
-                    contents,
+                    instructions: systemInstruction,
+                    input: script,
+                    ...openAiJsonConfig,
                 });
 
-                const finalResult = response.text || "";
+                const finalResult = response.output_text || "";
 
-                console.log("Raw Gemini response:", finalResult);
+                console.log("Raw OpenAI response:", finalResult);
 
                 if (!finalResult) {
-                    throw new Error("Empty response received from Gemini");
+                    throw new Error("Empty response received from OpenAI");
                 }
 
                 let parsedResult: LectureScript;
@@ -70,7 +112,7 @@ export const runGoogleGeminiModel = async (
                 try {
                     parsedResult = JSON.parse(finalResult);
                 } catch {
-                    throw new Error("Gemini returned invalid JSON");
+                    throw new Error("OpenAI returned invalid JSON");
                 }
 
                 if (
@@ -79,7 +121,7 @@ export const runGoogleGeminiModel = async (
                     typeof parsedResult.outro !== "string"
                 ) {
                     throw new Error(
-                        "Gemini response does not contain intro, content and outro"
+                        "OpenAI response does not contain intro, content and outro"
                     );
                 }
 
@@ -87,11 +129,11 @@ export const runGoogleGeminiModel = async (
                     success: true,
                     script: parsedResult,
                     message: "AI script generated",
-                    service: "google",
+                    service: "openai",
                     err: "",
                 };
             } catch (err: any) {
-                const status = err?.status;
+                const status = getOpenAiErrorStatus(err);
 
                 console.error(
                     `Attempt ${attempt} failed with status:`,
@@ -103,8 +145,7 @@ export const runGoogleGeminiModel = async (
                     status === 400 ||
                     status === 401 ||
                     status === 403 ||
-                    status === 404 ||
-                    status === 429
+                    status === 404
                 ) {
                     throw err;
                 }
@@ -121,71 +162,65 @@ export const runGoogleGeminiModel = async (
             }
         }
     } catch (err: any) {
-        console.error("Gemini generation failed:", err);
+        console.error("OpenAI generation failed:", err);
 
         return {
             success: false,
             script: null,
             message: "Failed to generate AI script",
-            service: "google",
+            service: "openai",
             err: err?.message || "Unknown error",
         };
     }
 };
 
-export const runGoogleGeminiSceneModel = async (
+/**
+ * Generate Remotion scene plan JSON via GPT-5 mini.
+ * Drop-in replacement for the previous Gemini scene runner.
+ */
+export const runOpenAiSceneModel = async (
     systemInstruction: string,
     script: string,
     audioSegments: AudioSegment[]
 ) => {
     try {
-        const ai = new GoogleGenAI({
-            apiKey: GOOGLE_API_KEY || "",
-        });
-
-        const config = {
-            systemInstruction,
-            responseMimeType: "application/json",
-        };
-
-        const contents = [
-            {
-                role: "user",
-                parts: [
-                    {
-                        text: JSON.stringify({
-                            contentScript: script,
-                            alignmentSegments: audioSegments,
-                        }),
-                    },
-                ],
-            },
-        ];
-
+        const openai = getOpenAiClient();
+        const model = gpt5Mini;
         const maxRetries = 2;
+
+        const userInput = JSON.stringify({
+            contentScript: script,
+            alignmentSegments: audioSegments,
+        });
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 console.log(
-                    `Gemini Scene Request Attempt ${attempt}/${maxRetries}`
+                    `OpenAI Scene Request Attempt ${attempt}/${maxRetries}`
                 );
 
-                const response = await ai.models.generateContent({
-                    model: gemini2Dot5Flash,
-                    config,
-                    contents,
+                const response = await openai.responses.create({
+                    model,
+                    instructions: systemInstruction,
+                    input: [
+                        {
+                            role: "user",
+                            content: `Generate a JSON object for the following input:\n\n${userInput}`
+                        }
+                    ],
+                    ...openAiSceneJsonConfig,
                 });
 
-                const finalResult = response.text || "";
+                const finalResult = response.output_text || "";
 
                 console.log(
-                    "Raw Gemini scene response:",
+                    "Raw OpenAI scene response:",
                     finalResult
                 );
 
                 if (!finalResult) {
                     throw new Error(
-                        "Empty response received from Gemini"
+                        "Empty response received from OpenAI"
                     );
                 }
 
@@ -199,7 +234,7 @@ export const runGoogleGeminiSceneModel = async (
                     rawResult = JSON.parse(finalResult);
                 } catch {
                     throw new Error(
-                        "Gemini returned invalid JSON"
+                        "OpenAI returned invalid JSON"
                     );
                 }
 
@@ -253,13 +288,13 @@ export const runGoogleGeminiSceneModel = async (
                     success: true,
                     scenes: parsedResult.scenes,
                     message: "Scene plan generated",
-                    service: "google",
+                    service: "openai",
                     err: "",
                 };
 
             } catch (err: any) {
 
-                const status = err?.status;
+                const status = getOpenAiErrorStatus(err);
 
                 console.error(
                     `Attempt ${attempt} failed with status:`,
@@ -271,8 +306,7 @@ export const runGoogleGeminiSceneModel = async (
                     status === 400 ||
                     status === 401 ||
                     status === 403 ||
-                    status === 404 ||
-                    status === 429
+                    status === 404
                 ) {
                     throw err;
                 }
@@ -291,7 +325,7 @@ export const runGoogleGeminiSceneModel = async (
     } catch (err: any) {
 
         console.error(
-            "Gemini scene generation failed:",
+            "OpenAI scene generation failed:",
             err
         );
 
@@ -299,38 +333,8 @@ export const runGoogleGeminiSceneModel = async (
             success: false,
             scenes: null,
             message: "Failed to generate scene plan",
-            service: "google",
+            service: "openai",
             err: err?.message || "Unknown error",
         };
     }
 };
-
-export const runOpenAiModel = async (systemInstruction: string, script: string) => {
-    const openai = new OpenAI({
-        apiKey: OPENAI_API_KEY,
-    });
-
-    const model = gpt5Mini
-
-    const config = {
-        text: {
-            format: {
-                type: "text",
-            },
-            verbosity: "medium",
-        },
-
-        reasoning: {
-            effort: "medium",
-            mode: "standard",
-        },
-    } as const
-
-    const response = await openai.responses.create({
-        model,
-        instructions: systemInstruction,
-        input: script,
-        ...config,
-    })
-
-}

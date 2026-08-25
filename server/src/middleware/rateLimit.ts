@@ -8,7 +8,7 @@ export const pdfExtractionLimiter = rateLimit({
 
     message: {
         success: false,
-        message: "Too many PDF extraction requests. Please try again later.",
+        message: "aiLimiter: Too many PDF extraction requests. Please try again later.",
     },
 });
 
@@ -20,6 +20,6 @@ export const aiLimiter = rateLimit({
 
     message: {
         success: false,
-        message: "Too many PDF extraction requests. Please try again later.",
+        message: "aiLimiter: Too many requests. Please try again later.",
     },
 });

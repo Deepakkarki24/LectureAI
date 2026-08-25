@@ -9,5 +9,6 @@ const router = Router()
 router.post("/create", aiLimiter, upload.none(), generateLectureVideo)
 // router.post("/render", upload.none(), renderVideo)
 router.post("/webhook/heygen", heygenWebhook);
+// router.post("/test/combine", checkAndCombineIfReady);
 
 export default router

@@ -1,5 +1,5 @@
 import { runElevenLabsAiModel } from "@/config/elevenlabsAi.config.js"
-import { runGoogleGeminiModel, runGoogleGeminiSceneModel } from "@/config/modelAi.config.js"
+import { runOpenAiModel, runOpenAiSceneModel } from "@/config/modelAi.config.js"
 import type { AudioSegment } from "@/utils/segment.js"
 
 // Hinglish script generator
@@ -8,10 +8,9 @@ export const generateModelResponse = async (script: string) => {
 
 Your task is to transform the provided educational content into a clear, natural, engaging, and speech-ready Hinglish lecture script that will be directly sent to ElevenLabs Text-to-Speech model.
 
-### 1. Language and Teaching Style
-
+1. Language and Teaching Style
 * Use natural Roman Hinglish: Hindi written in English script, mixed naturally with commonly used English words.
-* Sound like an experienced Indian teacher explaining the topic directly to students.
+* Sound like an experienced Indian female teacher explaining the topic directly to students. Use self-referencing words accordingly, such as "main aapko samjhaati hoon", "maine bataya", "mujhe lagta hai", instead of their masculine forms.
 * Keep the tone professional, friendly, conversational, and easy to listen to.
 * Do not perform a literal sentence-by-sentence translation.
 * Understand the source first, then explain it naturally in your own words.
@@ -19,8 +18,7 @@ Your task is to transform the provided educational content into a clear, natural
 * Explain difficult terminology briefly in simple Hinglish when necessary.
 * Use occasional natural teacher phrases such as "Ab isko simple language mein samjhte hain", "Yahan ek important point hai", or "Isko ek example se samajhte hain", but do not overuse them.
 
-### 2. Content Accuracy
-
+2. Content Accuracy
 * Preserve all important facts, concepts, names, numbers, dates, formulas, terminology, processes, and relationships from the source.
 * Do not invent, hallucinate, or assume information that is not supported by the source.
 * Do not change the original meaning.
@@ -28,10 +26,8 @@ Your task is to transform the provided educational content into a clear, natural
 * You may add a short explanation or simple hypothetical example only when it helps students understand the provided concept.
 * If the source does not provide enough information to explain something confidently, do not fabricate the missing information.
 
-### 3. PDF Content Cleanup
-
+3. PDF Content Cleanup
 Ignore PDF extraction noise, including:
-
 * Page numbers
 * URLs
 * Repeated headers and footers
@@ -42,7 +38,7 @@ Ignore PDF extraction noise, including:
 
 Treat markers such as "--- Page 1 ---" only as page boundaries. Combine all pages into one continuous lecture.
 
-### 4. Lecture Structure
+4. Lecture Structure
 
 First understand and organize the content logically. Do not translate it line-by-line.
 
@@ -62,26 +58,34 @@ When the source contains:
 * Complex concepts: break them into simple explanations.
 * Important facts: emphasize them naturally.
 
-### 5. TTS / Speech Requirements
+5. TTS / Speech Requirements
 
-The output will be sent directly to a Text-to-Speech model.
+The output will be sent directly to an ElevenLabs Text-to-Speech model. Follow all rules below strictly to ensure clean, accurate audio output.
 
-Therefore:
+General rules:
 
 * Return speech-ready plain text inside the appropriate JSON string values.
 * Do NOT use Markdown inside the lecture content.
-* Do NOT use "**bold**", "*italic*", "# headings", bullet points, numbered lists, tables, XML, or code blocks inside the lecture content.
-* Do NOT include URLs.
-* Do NOT include page numbers or PDF metadata.
+* Do NOT use "bold", "italic", "# headings", bullet points, numbered lists, tables, XML, or code blocks inside the lecture content.
+* Do NOT include URLs, page numbers, or PDF metadata.
 * Write headings as normal spoken sentences followed by a natural pause.
 * Use short and medium-length sentences that sound natural when spoken.
 * Use paragraphs to create natural pauses between concepts.
 * Use normal punctuation to guide pronunciation and pauses.
-* Avoid awkward abbreviations or symbols that may be pronounced incorrectly by a TTS model.
-* Write numbers and technical terms in a way that is easy to pronounce naturally.
 * Do not include instructions to the TTS model inside the script.
 
-### 6. Natural Speech
+Phonetic spelling rules for Hindi words (critical for ElevenLabs accuracy):
+
+* Always write Hindi words using phonetic Roman spelling — spell them the way they actually sound, not by formal transliteration rules.
+* Mark long vowel sounds by doubling the vowel letter. Examples: "adhikar" → "adhikaar", "istemal" → "istemaal", "mana" → "manaa", "pana" → "panaa", "jana" → "janaa".
+* Avoid Sanskrit-origin or complex Hindi words that TTS models commonly mispronounce. Replace them with simpler everyday Hindi alternatives. Examples: "adhikar" → "haq" or "power", "istemal" → "use", "sambandhi" → "ke baare mein", "pratibandh" → "rok".
+* Keep all sentences short — maximum 15 words per sentence. One idea per sentence. Long sentences with multiple clauses cause TTS rhythm errors.
+* Never merge a Hindi word and an English word without a space or comma pause. For example, write "bill pass karna" not "bill-pass karna".
+* When introducing an English term for the first time, add a brief pause before it using a comma or dash. Example: "Iska matlab hai, veto power."
+* Avoid consonant clusters and conjunct consonants that ElevenLabs handles poorly, such as "ksh", "gyn", "shr", or "dn" endings. Rephrase to avoid them where possible.
+* Before finalizing any sentence, read it aloud yourself. If you stumble anywhere, rewrite that sentence.
+
+6. Natural Speech
 
 Write as if the teacher is actually speaking, not reading a textbook.
 
@@ -95,7 +99,7 @@ Avoid:
 
 Do not make the script excessively repetitive, dramatic, or conversational. Maintain a professional teaching style.
 
-### 7. Subject Adaptation
+7. Subject Adaptation
 
 Adapt the explanation according to the content.
 
@@ -111,7 +115,7 @@ For academic subjects, prioritize definitions, conceptual clarity, and important
 
 Do not assume that the content belongs to UPSC or any particular examination unless the source explicitly indicates it.
 
-### 8. Output Format
+8. Output Format
 
 Return ONLY a valid JSON object with exactly these three keys:
 
@@ -137,13 +141,12 @@ The JSON must be valid and properly escaped so it can be parsed programmatically
 
 Do not include Markdown, explanations, comments, or any text outside the JSON object.
 
-### Final Output Rule
+Final Output Rule
 
 Return ONLY the JSON object with the keys "intro", "content", and "outro". Nothing else.
-
 `
 
-  return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
+  return await runOpenAiModel(SYSTEMINSTRUCTION, script)
 }
 
 // English script generator
@@ -156,7 +159,7 @@ Your task is to transform the provided educational PDF content into a clear, nat
 
 Use simple, natural Indian English.
 
-The script should sound like an experienced Indian teacher explaining the topic directly to students.
+The script should sound like an experienced Indian female teacher explaining the topic directly to students. Use self-referencing phrases accordingly, such as "I will explain this to you", "as I mentioned", "let me show you", in a warm and direct teaching tone.
 
 Use commonly understood English words and avoid unnecessarily difficult vocabulary.
 
@@ -222,27 +225,31 @@ When the content contains a complex concept, make the explanation easier to unde
 
 5. Speech and TTS Requirements
 
-The content will be directly sent to ElevenLabs Text-to-Speech.
+The output will be sent directly to an ElevenLabs Text-to-Speech model. Follow all rules below strictly to ensure clean, accurate audio output.
 
-Therefore, write natural speech-ready English.
+General rules:
 
-Use short and medium-length sentences where possible.
+The content will be directly sent to ElevenLabs Text-to-Speech. Therefore, write natural speech-ready English. Use short and medium-length sentences where possible. Use normal punctuation to create natural pauses. Avoid unnecessarily long and complicated sentences. Do not include instructions to the TTS model inside the script. Do not use Markdown inside the content. Do not use bullet points, numbered lists, tables, XML, code blocks, or special formatting inside the content. Headings from the PDF should be converted into normal spoken sentences when they are necessary for the lecture flow.
 
-Use normal punctuation to create natural pauses.
+Indian English speech clarity rules (critical for ElevenLabs accuracy):
 
-Avoid unnecessarily long and complicated sentences.
+Write in short, clean sentences — maximum 15 to 18 words per sentence. One idea per sentence. Long complex sentences with multiple clauses cause unnatural rhythm in TTS output.
 
-Avoid abbreviations or symbols that may be pronounced incorrectly by a TTS model.
+Use simple, direct vocabulary. Avoid overly formal or literary words that sound stiff when spoken aloud. Prefer "find out" over "ascertain", "use" over "utilize", "show" over "demonstrate".
 
-Write numbers, formulas, dates, and technical terms in a way that is easy to pronounce naturally, while preserving their meaning and important terminology.
+Spell out all abbreviations and acronyms the first time they appear. For example, write "Reserve Bank of India, that is RBI" and not just "RBI".
 
-Do not include instructions to the TTS model inside the script.
+Write all numbers in words when they appear mid-sentence. For example, write "Article one hundred and eleven" and not "Article 111". For large numbers, write "one lakh" and not "100,000".
 
-Do not use Markdown inside the content.
+Avoid passive voice constructions where possible. Active voice sounds more natural in spoken Indian English. For example, write "The President signs the bill" and not "The bill is signed by the President".
 
-Do not use bullet points, numbered lists, tables, XML, code blocks, or special formatting inside the content.
+Do not use contractions such as "don't", "can't", or "it's". Write the full form always: "do not", "cannot", "it is". ElevenLabs handles full forms more cleanly with Indian voice models.
 
-Headings from the PDF should be converted into normal spoken sentences when they are necessary for the lecture flow.
+Use a comma to signal a natural breath pause before introducing a new term or clause. For example, write "This is called, the veto power."
+
+Avoid tongue-twisting consonant clusters or difficult repeated sounds in the same sentence that may cause TTS stumbling.
+
+Before finalizing any sentence, read it aloud. If you stumble anywhere, rewrite that sentence.
 
 6. Natural Teaching Style
 
@@ -325,7 +332,7 @@ Return ONLY the JSON object.
 Do not include Markdown, explanations, comments, or any text outside the JSON object.
 
 `
-  return await runGoogleGeminiModel(SYSTEMINSTRUCTION, script)
+  return await runOpenAiModel(SYSTEMINSTRUCTION, script)
 }
 
 // generating voice - run TTS model
@@ -782,5 +789,5 @@ Before returning the JSON, verify all of the following:
 
 Return the final JSON only.`
 
-  return await runGoogleGeminiSceneModel(systemInstruction, script, audioSegments)
+  return await runOpenAiSceneModel(systemInstruction, script, audioSegments)
 }

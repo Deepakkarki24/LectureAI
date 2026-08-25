@@ -2,24 +2,24 @@
 
 Turn PDF study material into a spoken lecture and, on the backend, into a full teaching video.
 
-Upload a PDF, preview it in the browser, extract the text on the server, generate teacher-style **Hinglish** and **English** scripts with Google Gemini, convert them to speech with ElevenLabs, then assemble an **intro (HeyGen avatar) + content (Remotion animation) + outro (HeyGen avatar)** video stored on Cloudinary.
+Upload a PDF, preview it in the browser, extract the text on the server, generate teacher-style **Hinglish** and **English** scripts with OpenAI GPT-5 mini, convert them to speech with ElevenLabs, then assemble an **intro (HeyGen avatar) + content (Remotion animation) + outro (HeyGen avatar)** video stored on Cloudinary.
 
 ## What it does
 
 ```
 Upload PDF → Preview → Extract text → Generate scripts → TTS + scene plan → Lecture video
- (client)    (client)    (server)        (Gemini)        (ElevenLabs)      (HeyGen + Remotion + FFmpeg)
+ (client)    (client)    (server)        (GPT-5 mini)    (ElevenLabs)      (HeyGen + Remotion + FFmpeg)
                               ↓
                          MongoDB lecture record
 ```
 
 1. **Upload & preview** — Drag and drop a PDF. The app checks file type, size, and page count, then shows a page-by-page preview.
 2. **Extract content** — The PDF is sent to the backend. Text is pulled from each page and a `Lecture` document is created in MongoDB.
-3. **Generate scripts** — Gemini produces two speech-ready lecture scripts from the extracted text:
+3. **Generate scripts** — GPT-5 mini produces two speech-ready lecture scripts from the extracted text:
    - **Hinglish** (Roman Hindi mixed with English) for listening
    - **English** (simple Indian English) for video narration
    Each script has `intro`, `content`, and `outro`.
-4. **Text to speech** — ElevenLabs turns those scripts into MP3s. English **content** audio includes character timestamps so Gemini can plan timed Remotion scenes. Audio files are uploaded to Cloudinary.
+4. **Text to speech** — ElevenLabs turns those scripts into MP3s. English **content** audio includes character timestamps so GPT-5 mini can plan timed Remotion scenes. Audio files are uploaded to Cloudinary.
 5. **Lecture video** (API) — HeyGen generates avatar clips for intro and outro. Remotion renders animated slides for the content. When all three clips are ready, FFmpeg concatenates them into one 1920×1080 MP4.
 
 The **frontend dashboard** currently covers steps 1–4 (upload, extract, script, voice). Video generation is started with `POST /api/video/create` once audio exists on the lecture record.
@@ -30,12 +30,12 @@ The **frontend dashboard** currently covers steps 1–4 (upload, extract, script
 |-------|----------------|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, react-pdf, pdfjs-dist |
 | Backend | Node.js, Express 5, TypeScript, Multer, Mongoose, pdfjs-dist, Zod |
-| AI | Google Gemini (`gemini-2.5-flash`), ElevenLabs TTS (`eleven_multilingual_v2`) |
+| AI | OpenAI GPT-5 mini (`gpt-5-mini`), ElevenLabs TTS (`eleven_multilingual_v2`) |
 | Video | HeyGen Avatar III, Remotion 4, FFmpeg (`fluent-ffmpeg`) |
 | Storage | MongoDB, Cloudinary |
 | Rate limiting | `express-rate-limit` |
 
-OpenAI (`gpt-5-mini`) is wired in `server/src/config/modelAi.config.ts` but the live script and scene pipeline uses **Gemini**.
+Script and Remotion scene generation run through OpenAI (`gpt-5-mini`) in `server/src/config/modelAi.config.ts`.
 
 ## Project structure
 
@@ -56,7 +56,7 @@ lectureAi/
 │   │   ├── routes/              # /api/pdf, /api/text-to-speech, /api/video
 │   │   ├── models/              # Lecture mongoose schema
 │   │   ├── services/            # PDF extract, HeyGen, Remotion, FFmpeg merge
-│   │   ├── runner/              # Gemini + ElevenLabs orchestration
+│   │   ├── runner/              # OpenAI + ElevenLabs orchestration
 │   │   ├── validators/          # Zod scene-plan schema
 │   │   ├── middleware/          # Rate limiters
 │   │   ├── config/              # Env, DB, Multer, AI, Cloudinary
@@ -109,7 +109,7 @@ HeyGen callbacks identify clips by **HeyGen `video_id`**, not by lecture id alon
 - **FFmpeg** on the PATH — required to merge intro + animation + outro
 - A Chromium/Chrome-capable environment for Remotion (`ensureBrowser`)
 - API / cloud accounts:
-  - [Google AI Studio](https://aistudio.google.com/) — Gemini
+  - [OpenAI](https://platform.openai.com/) — GPT-5 mini (scripts + scene planning)
   - [ElevenLabs](https://elevenlabs.io/) — TTS
   - [HeyGen](https://www.heygen.com/) — avatar intro/outro
   - [Cloudinary](https://cloudinary.com/) — audio and video hosting
@@ -157,7 +157,7 @@ NODE_ENV=development
 
 # Required
 MONGODB_URI=mongodb://localhost:27017/lectureai
-GOOGLE_API_KEY=your_google_api_key
+OPENAI_API_KEY=your_openai_api_key
 ELEVENLABS_API_KEY=your_elevenlabs_api_key
 HEYGEN_API_KEY=your_heygen_api_key
 HEYGEN_WEBHOOK_URL=https://your-public-host/api/video/webhook/heygen
@@ -166,7 +166,6 @@ CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_SECRET_KEY=your_cloudinary_secret
 
 # Optional
-OPENAI_API_KEY=your_openai_api_key
 CLIENT_URL=http://localhost:5173
 
 # Production Atlas (used when NODE_ENV=Production)
@@ -209,7 +208,7 @@ Open the URL Vite prints (usually **http://localhost:5173**).
 2. Upload a PDF (max **20 MB**, max **8 pages**).
 3. Confirm the page-by-page preview.
 4. Click **Extract PDF Content**. The server stores text and returns a `lectureId`.
-5. Click **Generate AI Script**. Gemini writes intro / content / outro (Hinglish is shown in the editor).
+5. Click **Generate AI Script**. GPT-5 mini writes intro / content / outro (Hinglish is shown in the editor).
 6. Review or edit the three fields.
 7. Click **Convert Script to Voice**. The backend generates Hinglish + English audio, a scene plan, and Cloudinary URLs.
 
@@ -278,7 +277,7 @@ Content-Type: multipart/form-data
 
 Rate limit: **10 requests / hour**.
 
-Loads `extractedContent` from MongoDB, calls Gemini twice (Hinglish + English), and stores both scripts.
+Loads `extractedContent` from MongoDB, calls GPT-5 mini twice (Hinglish + English), and stores both scripts.
 
 **Success (200)** — `data`:
 
@@ -319,7 +318,7 @@ What the server does:
 1. Cleans Hinglish intro + content + outro and synthesizes **one** Hinglish MP3 (`vidhiVoiceOver`).
 2. Synthesizes English intro, content, and outro separately (`ritikaVoiceOver`). Content is generated **with timestamps**.
 3. Builds sentence-level segments from ElevenLabs alignment.
-4. Asks Gemini for a validated Remotion **scene plan** (Zod + timing checks).
+4. Asks GPT-5 mini for a validated Remotion **scene plan** (Zod + timing checks).
 5. Uploads MP3s to Cloudinary under `audio/lectures/<pdfName>/...`.
 
 **Success (200)**
@@ -394,14 +393,13 @@ Other event types are ignored with HTTP 200.
 | `MONGODB_URI` | Yes* | Local / custom MongoDB URI |
 | `MONGODB_USERNAME` | Production | Atlas username |
 | `MONGODB_PASSWORD` | Production | Atlas password |
-| `GOOGLE_API_KEY` | Yes | Gemini script and scene generation |
+| `OPENAI_API_KEY` | Yes | GPT-5 mini script and scene generation |
 | `ELEVENLABS_API_KEY` | Yes | TTS |
 | `HEYGEN_API_KEY` | Yes | Avatar video jobs |
 | `HEYGEN_WEBHOOK_URL` | Yes | Public webhook for completed HeyGen videos |
 | `CLOUDINARY_CLOUD_NAME` | Yes | Cloudinary cloud |
 | `CLOUDINARY_API_KEY` | Yes | Cloudinary key |
 | `CLOUDINARY_SECRET_KEY` | Yes | Cloudinary secret |
-| `OPENAI_API_KEY` | No | Present for optional OpenAI helper; not used by the current runner |
 | `CLIENT_URL` | No | Frontend origin (CORS currently allows `*`) |
 
 \*Required unless `NODE_ENV=Production` and Atlas credentials are set.
@@ -457,7 +455,7 @@ Scanned / image-only PDFs often extract poorly because there is no OCR step.
 | Piece | Role |
 |-------|------|
 | **ElevenLabs** | Hinglish listen track + English intro/content/outro. Content uses `convertWithTimestamps` so scenes can follow speech. |
-| **Gemini scene planner** | Maps English narration + alignment segments to a Zod-validated scene list. |
+| **GPT-5 mini scene planner** | Maps English narration + alignment segments to a Zod-validated scene list. |
 | **Remotion** | 1920×1080, 30 fps composition `LectureVideo`. Implemented scene UIs include concept, definition, bullet points, comparison, process, and question. |
 | **HeyGen** | Talking-head intro and outro from English audio URLs. Avatar id lives in `server/src/config/model.ts`. |
 | **FFmpeg** | Scales all three clips to 1920×1080 @ 30 fps and concatenates video + audio. |
@@ -472,7 +470,7 @@ The MongoDB / Zod schema also allows additional types (for example `title`, `tim
 ## Architecture notes
 
 - **Frontend** — Upload UI, PDF preview, extracted-text display, script editor, and API calls. No server-side PDF parsing in the browser.
-- **Backend** — Extraction, persistence, Gemini, TTS, scene planning, HeyGen, Remotion, FFmpeg, Cloudinary.
+- **Backend** — Extraction, persistence, GPT-5 mini, TTS, scene planning, HeyGen, Remotion, FFmpeg, Cloudinary.
 - **Lecture id** — After extract, almost every step is keyed by `lectureId`, not by re-uploading the PDF.
 - **Concurrency** — TTS jobs are limited with `p-limit` (3 at a time). Final merge uses a `combining` status lock so intro and outro webhooks do not merge twice.
 - **CORS** — Currently `origin: "*"`.
@@ -483,7 +481,7 @@ The MongoDB / Zod schema also allows additional types (for example `title`, `tim
 |---------|----------------|
 | Server exits on start | `MONGODB_URI` is missing or MongoDB is not running |
 | PDF preview fails | `pdfjs-dist` must match `react-pdf` (both `5.4.296`) |
-| Extract / script / voice fails | Server running; Gemini and ElevenLabs keys in `server/.env` |
+| Extract / script / voice fails | Server running; OpenAI and ElevenLabs keys in `server/.env` |
 | Empty or broken extract | Use a PDF with selectable text; image-only scans will not OCR |
 | Rate-limit JSON errors | PDF extract: 20 / 15 min. Script, TTS, and video: 10 / hour |
 | CORS or network errors | Set `VITE_API_URL` to the API origin |
