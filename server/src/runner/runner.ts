@@ -409,11 +409,145 @@ Only use these scene types:
 
 Never create or invent another scene type.
 
-Choose the simplest scene type that clearly communicates the narration.
+SCENE TYPE SELECTION GUIDE (follow this priority order):
+
+Use "title" only for the opening scene of the lecture or a major new section heading.
+
+Use "definition" when the narration introduces a term and explains what it means.
+This is the most important scene type for tutorial content — use it generously.
+
+Use "concept" when the narration explains an idea, principle, or relationship
+that is not a direct definition. Use a short punchy title and a supporting subtitle.
+
+Use "bulletPoints" when the narration lists three or more distinct items, features,
+types, or characteristics. Never use bulletPoints for fewer than three points.
+
+Use "process" when the narration describes a sequence of steps that happen in order.
+Each step must be a short action phrase, not a full sentence.
+
+Use "flowchart" when the narration describes a decision flow or conditional logic
+such as "if this happens, then that happens".
+
+Use "comparison" when the narration directly contrasts two things side by side.
+
+Use "timeline" when the narration describes events in historical or chronological order.
+
+Use "example" when the narration gives a concrete real-world or hypothetical example
+to illustrate a concept.
+
+Use "statistics" when the narration mentions specific numbers, percentages, or data.
+
+Use "quote" when the narration references an important statement, provision, or rule
+that should be shown verbatim.
+
+Use "question" when the narration poses a question to the student to create engagement.
+
+Use "summary" only at the end of a major section or the full lecture to recap key points.
+
+Use "diagram" when the narration describes components, parts, or elements of a system.
+
+Do NOT default to "concept" for everything.
+Do NOT use "bulletPoints" when the narration is explaining a single idea.
+Do NOT use "summary" in the middle of a lecture.
+
+==================================================
+SCENE GROUPING RULES
+==================================================
 
 Do NOT create a new scene for every sentence.
 
-Create a new scene only when the main visual concept changes.
+Group consecutive segments into one scene when:
+- They explain the same single concept, term, or idea.
+- They form one logical teaching unit that a student would understand together.
+- Splitting them would make the visual feel disconnected from the narration.
+
+Create a new scene when:
+- The topic clearly shifts to a new concept, term, or idea.
+- The scene type would need to change to represent the new content.
+- A definition, example, or comparison begins that was not present before.
+
+Target scene duration:
+- Minimum: 4 seconds. Never create a scene shorter than 4 seconds.
+- Ideal: 6 to 15 seconds per scene for tutorial pacing.
+- Maximum: 25 seconds. If narration on one topic runs longer, split it using
+  complementary scene types such as concept followed by bulletPoints or example.
+
+==================================================
+TUTORIAL VISUAL CONTENT RULES
+==================================================
+
+Visual content MUST be based only on the provided narration and alignment segments.
+
+Do not invent facts, statistics, dates, names, examples, or relationships
+not supported by the narration.
+
+The visual must SUPPORT and REINFORCE the narration, not duplicate it word for word.
+
+On-screen text must be concise — a student glancing at the screen should
+instantly understand the key idea even without hearing the audio.
+
+For each scene type, follow these content rules:
+
+"definition" scenes:
+- term: the word or phrase being defined (short, 1 to 4 words)
+- definition: a concise version of the definition from the narration (1 to 2 sentences max)
+
+"concept" scenes:
+- title: the name of the concept (3 to 6 words max)
+- subtitle: a single supporting idea or implication (1 short sentence)
+
+"bulletPoints" scenes:
+- title: the category or topic being listed
+- points: each point must be a short phrase (5 to 8 words), not a full sentence
+- Minimum 3 points, maximum 6 points
+
+"process" scenes:
+- title: the name of the process
+- steps: each step must start with an action verb (approve, sign, return, reject)
+- Maximum 5 steps
+
+"flowchart" scenes:
+- title: the decision or flow being described
+- steps: write each node as a short condition or outcome phrase
+
+"comparison" scenes:
+- left and right titles must clearly name the two things being compared
+- descriptions must highlight the key difference, not repeat the same information
+
+"example" scenes:
+- title: the concept being illustrated
+- example: describe the example in 1 to 2 concise sentences
+
+"timeline" scenes:
+- each event label must be a date, year, or era
+- description must be a short outcome or event (1 sentence)
+
+"summary" scenes:
+- points must each capture one distinct key takeaway (5 to 8 words each)
+
+"diagram" scenes:
+- labels must name the components or parts clearly (2 to 4 words each)
+
+==================================================
+TUTORIAL SCENE FLOW RULES
+==================================================
+
+Scenes must feel like they build on each other, not appear in isolation.
+
+Follow this natural tutorial teaching flow where the content supports it:
+
+1. Open with a "title" or "question" scene to introduce the topic.
+2. Use "definition" early when a key term is introduced.
+3. Follow definitions with "concept" or "bulletPoints" to expand understanding.
+4. Use "process" or "flowchart" when explaining how something works step by step.
+5. Use "example" after a concept or definition to make it concrete.
+6. Use "comparison" when two things are being contrasted.
+7. Use "statistics" or "quote" when specific data or provisions appear.
+8. Close with "summary" to reinforce what was taught.
+
+Do not jump randomly between scene types.
+Do not repeat the same scene type more than three times in a row
+unless the narration clearly requires it.
 
 ==================================================
 ANIMATIONS
@@ -452,8 +586,32 @@ Every scene MUST contain all three animation fields:
   "emphasis": "..."
 }
 
-Never invent animation names.
+ANIMATION SELECTION GUIDE for tutorial feel:
 
+Use "reveal" entrance for definition and quote scenes — it feels like
+the answer is being unveiled to the student.
+
+Use "slideUp" entrance for bulletPoints and process scenes — it suggests
+content building upward.
+
+Use "slideLeft" or "slideRight" entrance for comparison scenes —
+it reinforces the side-by-side nature.
+
+Use "fade" entrance for concept and title scenes — clean and neutral.
+
+Use "scale" entrance for statistics scenes — draws attention to the number.
+
+Use "highlight" emphasis for definition and quote scenes.
+
+Use "pulse" emphasis for concept and title scenes.
+
+Use "underline" emphasis for bulletPoints and summary scenes.
+
+Use "zoom" emphasis for statistics and example scenes.
+
+Use "fade" exit for most scenes to keep transitions smooth.
+
+Never invent animation names.
 Never return animation code.
 
 ==================================================
@@ -463,47 +621,37 @@ STRICT DATA SCHEMAS
 The "data" object MUST exactly match the schema of the selected scene type.
 
 Do not add arbitrary fields.
-
 Do not rename fields.
-
 Do not change strings into objects.
-
 Do not change arrays into objects.
-
 Do not add nested structures that are not defined below.
-
 All text fields MUST be primitive strings.
 
 "title" scene:
-
 {
   "title": string,
   "subtitle": string
 }
 
 "concept" scene:
-
 {
   "title": string,
   "subtitle": string
 }
 
 "definition" scene:
-
 {
   "term": string,
   "definition": string
 }
 
 "bulletPoints" scene:
-
 {
   "title": string,
   "points": string[]
 }
 
 "comparison" scene:
-
 {
   "left": {
     "title": string,
@@ -516,14 +664,12 @@ All text fields MUST be primitive strings.
 }
 
 "process" scene:
-
 {
   "title": string,
   "steps": string[]
 }
 
 "timeline" scene:
-
 {
   "title": string,
   "events": [
@@ -535,34 +681,29 @@ All text fields MUST be primitive strings.
 }
 
 "flowchart" scene:
-
 {
   "title": string,
   "steps": string[]
 }
 
 "diagram" scene:
-
 {
   "title": string,
   "labels": string[]
 }
 
 "example" scene:
-
 {
   "title": string,
   "example": string
 }
 
 "question" scene:
-
 {
   "question": string
 }
 
 "statistics" scene:
-
 {
   "title": string,
   "statistics": [
@@ -574,77 +715,15 @@ All text fields MUST be primitive strings.
 }
 
 "quote" scene:
-
 {
   "quote": string,
   "source": string
 }
 
 "summary" scene:
-
 {
   "title": string,
   "points": string[]
-}
-
-IMPORTANT:
-
-The selected scene type determines the exact structure of "data".
-
-For example, a "comparison" scene MUST NOT return:
-
-{
-  "data": {
-    "text": "..."
-  }
-}
-
-and a "concept" scene MUST NOT return:
-
-{
-  "data": {
-    "content": {
-      "text": "..."
-    }
-  }
-}
-
-Use only the schema defined above.
-
-==================================================
-VISUAL CONTENT
-==================================================
-
-Visual content MUST be based only on the provided narration and alignment
-segments.
-
-Do not invent:
-
-- facts
-- statistics
-- dates
-- names
-- examples
-- relationships
-- explanations not supported by the narration
-
-The visual should support the narration rather than duplicate the entire
-narration.
-
-Keep on-screen text concise.
-
-Do not place the complete narration text on screen.
-
-Example:
-
-Narration:
-"Prime Minister India ke real executive head hote hain."
-
-Good:
-
-{
-  "title": "Prime Minister",
-  "subtitle": "Real Executive Head"
 }
 
 ==================================================
@@ -679,7 +758,6 @@ scene_3
 ...
 
 Use sequential numbering starting from scene_1.
-
 Never reuse a scene ID.
 
 ==================================================
@@ -720,15 +798,10 @@ OUTPUT FORMAT
 Return ONLY valid JSON.
 
 Do not return Markdown.
-
 Do not return explanations.
-
 Do not return comments.
-
 Do not return code fences.
-
 Do not return React code.
-
 Do not return Remotion code.
 
 Use exactly this top-level structure:
@@ -764,28 +837,24 @@ Before returning the JSON, verify all of the following:
 
 1. The JSON is valid.
 2. The top-level object contains only "scenes".
-3. Every scene has:
-   - id
-   - type
-   - start
-   - end
-   - narrationSegments
-   - data
-   - animation
+3. Every scene has id, type, start, end, narrationSegments, data, animation.
 4. Every scene ID is unique and sequential.
 5. Every segment ID exists in the provided alignmentSegments.
 6. Every alignment segment is represented by at least one scene.
 7. Scene timestamps come directly from the associated segments.
 8. Every scene has end > start.
-9. Scenes are in chronological order.
-10. All scene types are allowed.
-11. Every data object exactly matches its scene type schema.
-12. Every text field is a primitive string.
-13. Every required array contains only the correct item type.
-14. All animation values are allowed.
-15. No unsupported fields are present.
-16. No information has been invented.
-17. No React, Remotion, CSS, audio, or video code is present.
+9. No scene is shorter than 4 seconds.
+10. Scenes are in chronological order.
+11. All scene types are from the allowed list.
+12. Every data object exactly matches its scene type schema.
+13. Every text field is a primitive string.
+14. Every required array contains only the correct item type.
+15. All animation values are from the allowed list.
+16. No unsupported fields are present.
+17. No information has been invented.
+18. No React, Remotion, CSS, audio, or video code is present.
+19. Scene type selection follows the priority guide.
+20. Animation selection follows the tutorial animation guide.
 
 Return the final JSON only.`
 
