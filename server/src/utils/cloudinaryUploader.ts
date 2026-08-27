@@ -24,3 +24,32 @@ export const uploadAudioToCloudinary = (
         uploadStream.end(buffer);
     });
 };
+
+export const uploadImageToCloudinary = (
+    buffer: Buffer,
+    publicId: string
+): Promise<{ secure_url: string }> => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                resource_type: "image",
+                public_id: publicId,
+                folder: "lectures",
+                format: "png",
+            },
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                if (!result?.secure_url) {
+                    reject(new Error("Cloudinary image upload returned no URL"));
+                    return;
+                }
+                resolve({ secure_url: result.secure_url });
+            }
+        );
+
+        uploadStream.end(buffer);
+    });
+};

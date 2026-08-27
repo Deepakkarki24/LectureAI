@@ -79,10 +79,31 @@ export const checkAndCombineIfReady = async (lectureId: string) => {
     }
 }
 
-export const processRemotion = async (lectureId: string, audioUrl: string, scenes: any) => {
+export const processRemotion = async (lectureId: string) => {
     try {
-        const remotionResponse = await renderVideoAnimation(audioUrl, scenes, lectureId)
-        const remotionUrl = remotionResponse
+        const lecture = await Lecture.findById(lectureId)
+
+        if (!lecture) {
+            throw new Error("Lecture not found!")
+        }
+
+        const audioUrl = lecture.audio.english.contentUrl
+
+        if (!audioUrl) {
+            throw new Error("English content audio URL is missing")
+        }
+
+        const remotionUrl = await renderVideoAnimation({
+            lectureId,
+            audioUrl,
+            scenes: lecture.scenes,
+            pdfAnimationScenes: lecture.pdfAnimationScenes,
+            pageImageUrls: lecture.pageImageUrls,
+        })
+
+        if (!remotionUrl) {
+            throw new Error("Remotion render returned no URL")
+        }
 
         await Lecture.findByIdAndUpdate(
             lectureId,
@@ -95,7 +116,7 @@ export const processRemotion = async (lectureId: string, audioUrl: string, scene
 
         console.log("Remotion url stored in db!")
 
-        await checkAndCombineIfReady(lectureId)  // <-- the key function
+        await checkAndCombineIfReady(lectureId)
     } catch (err) {
         await Lecture.findByIdAndUpdate(
             lectureId,

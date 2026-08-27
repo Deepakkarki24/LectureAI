@@ -1,5 +1,7 @@
 import { Lecture } from "@/models/lecture.model.js";
+import { generatePdfAnimationSceneFromModel } from "@/runner/generatePdfAnimationScene.js";
 import { generateSceneFromModel, generateVoiceFromText } from "@/runner/runner.js";
+import { parsePdfPagesFromExtractedContent } from "@/services/pdfExtract.service.js";
 import { errorResponse } from "@/utils/apiResponse.js";
 import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
 import { createSentenceTimestamps, type ElevenLabsAlignment } from "@/utils/segment.js";
@@ -75,7 +77,22 @@ export const convertTextToVoice = async (
 
         console.log("start generating scene from audio segment...")
 
-        const sceneModelResponse = await generateSceneFromModel(english.content, reframeAudioSegments)
+        const pdfPages = parsePdfPagesFromExtractedContent(
+            foundLecture.extractedContent
+        )
+
+        if (pdfPages.length === 0) {
+            return errorResponse(res, 400, "No PDF page text available for scene planning")
+        }
+
+        const [sceneModelResponse, pdfAnimationSceneResponse] = await Promise.all([
+            generateSceneFromModel(english.content, reframeAudioSegments),
+            generatePdfAnimationSceneFromModel(
+                english.content,
+                reframeAudioSegments,
+                pdfPages
+            ),
+        ])
 
         console.log("generating scene completed from audio segment!")
 
@@ -85,6 +102,22 @@ export const convertTextToVoice = async (
 
         if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
             return errorResponse(res, 400, "Error while generating scene from model")
+        }
+
+        const pdfAnimationScenes = pdfAnimationSceneResponse?.scenes
+
+        if (
+            !pdfAnimationSceneResponse?.success ||
+            !pdfAnimationScenes ||
+            !Array.isArray(pdfAnimationScenes) ||
+            pdfAnimationScenes.length === 0
+        ) {
+            return errorResponse(
+                res,
+                400,
+                pdfAnimationSceneResponse?.err ||
+                    "Error while generating PDF animation scene plan"
+            )
         }
 
         const hinglishBuffer = hinglishAudio.audioBuffer;
@@ -141,6 +174,7 @@ export const convertTextToVoice = async (
             {
                 $set: {
                     scenes,
+                    pdfAnimationScenes,
                     audio: {
                         hinglish: {
                             finalUrl: hinglishAudioUrl
@@ -167,7 +201,8 @@ export const convertTextToVoice = async (
                 outroEnglishAudioUrl: outroEnglishUrl,
                 hinglishAudioUrl: hinglishAudioUrl
             },
-            scenes
+            scenes,
+            pdfAnimationScenes
         });
     } catch (err: any) {
         console.error(err);

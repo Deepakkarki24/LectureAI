@@ -26,12 +26,37 @@ export const generateLectureVideo = async (
         if (!foundLecture) return errorResponse(res, 404, "Lecture not found!")
 
         const { introUrl, contentUrl, outroUrl } = foundLecture.audio.english
-        const { scenes } = foundLecture
+        const scenes = foundLecture.scenes ?? []
+        const pdfAnimationScenes = foundLecture.pdfAnimationScenes ?? []
+        const pageImageUrls = foundLecture.pageImageUrls ?? []
 
         if (!introUrl || !contentUrl || !outroUrl) return errorResponse(res, 400, "Required audio URLs are not available in DB"
         )
 
-        if (!scenes) return errorResponse(res, 404, "Scenes not found in DB!")
+        const canRenderPdfAnimation =
+            pdfAnimationScenes.length > 0 && pageImageUrls.length > 0
+        const canRenderSlides = scenes.length > 0
+
+        if (!canRenderPdfAnimation && !canRenderSlides) {
+            return errorResponse(
+                res,
+                400,
+                "No Remotion scene plan found. Generate audio/scenes first."
+            )
+        }
+
+        if (canRenderPdfAnimation) {
+            for (const scene of pdfAnimationScenes) {
+                const pageUrl = pageImageUrls[scene.page - 1]
+                if (!pageUrl) {
+                    return errorResponse(
+                        res,
+                        400,
+                        `Missing PDF page image for page ${scene.page} (scene ${scene.id})`
+                    )
+                }
+            }
+        }
 
 
         const [introVideoId, outroVideoId] = await Promise.all([
@@ -62,8 +87,8 @@ export const generateLectureVideo = async (
             }
         });
 
-        // Generates animation from pdf content with remotion
-        processRemotion(lectureId, contentUrl, scenes)
+        // Renders this lecture's PDF page animation (or legacy slides) with Remotion
+        processRemotion(lectureId)
 
         console.log("Video Id generated!")
 

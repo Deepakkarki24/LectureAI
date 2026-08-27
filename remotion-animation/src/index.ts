@@ -15,4 +15,13 @@ export type {
     QuestionSceneData,
 } from "./types/scene";
 
+export type {
+    PdfAnimationScene,
+    PdfAnimationScenePlan,
+    PdfAnimationType,
+    PdfSceneCamera,
+    PdfSceneTransition,
+    NormalizedRegion,
+} from "./types/pdfAnimationScene";
+
 registerRoot(RemotionRoot);

@@ -6,6 +6,12 @@ import { ensureBrowser, renderMedia, selectComposition } from "@remotion/rendere
 import type { LectureVideoProps } from "./src/types/scene.js";
 
 export type { LectureVideoProps, Scene } from "./src/types/scene.js";
+export type {
+  PdfAnimationScene,
+  PdfAnimationScenePlan,
+  PdfAnimationType,
+  NormalizedRegion,
+} from "./src/types/pdfAnimationScene.js";
 
 export type RenderLectureVideoOptions = {
   /** Absolute or relative path for the rendered mp4. Defaults to <package>/out/video.mp4 */
@@ -31,11 +37,18 @@ export const renderLectureVideo = async (
   const inputProps: LectureVideoProps = {
     audioUrl: options.inputProps?.audioUrl ?? "",
     scenes: options.inputProps?.scenes ?? [],
+    pageImageUrls: options.inputProps?.pageImageUrls ?? [],
+    pdfAnimationScenes: options.inputProps?.pdfAnimationScenes ?? [],
   };
 
-  if (!inputProps.audioUrl || inputProps.scenes.length === 0) {
+  const hasPdfPlan =
+    (inputProps.pageImageUrls?.length ?? 0) > 0 &&
+    (inputProps.pdfAnimationScenes?.length ?? 0) > 0;
+  const hasSlidePlan = inputProps.scenes.length > 0;
+
+  if (!inputProps.audioUrl || (!hasPdfPlan && !hasSlidePlan)) {
     throw new Error(
-      "renderLectureVideo requires inputProps.audioUrl and inputProps.scenes",
+      "renderLectureVideo requires audioUrl and either slide scenes or pdfAnimationScenes + pageImageUrls",
     );
   }
 

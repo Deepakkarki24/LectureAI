@@ -5,10 +5,11 @@ import {
     useVideoConfig,
 } from "remotion";
 
+import { PdfLectureVideo } from "./PdfLectureVideo";
 import { SceneSlide } from "./scenes/SceneSlide";
 import { LectureVideoProps } from "./types/scene";
 
-export const LectureVideo = ({ audioUrl, scenes }: LectureVideoProps) => {
+const SlideLectureVideo = ({ audioUrl, scenes }: LectureVideoProps) => {
     const { fps } = useVideoConfig();
     return (
         <AbsoluteFill style={{ backgroundColor: "#0f172a" }}>
@@ -38,3 +39,20 @@ export const LectureVideo = ({ audioUrl, scenes }: LectureVideoProps) => {
     );
 };
 
+export const LectureVideo = (props: LectureVideoProps) => {
+    const pageImageUrls = props.pageImageUrls ?? [];
+    const pdfAnimationScenes = props.pdfAnimationScenes ?? [];
+
+    if (pageImageUrls.length > 0 && pdfAnimationScenes.length > 0) {
+        return (
+            <PdfLectureVideo
+                audioUrl={props.audioUrl}
+                pageImageUrls={pageImageUrls}
+                scenes={pdfAnimationScenes}
+                pageAspectRatios={props.pageAspectRatios}
+            />
+        );
+    }
+
+    return <SlideLectureVideo {...props} />;
+};

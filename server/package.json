@@ -15,6 +15,7 @@
   "description": "",
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.63.0",
+    "@napi-rs/canvas": "^0.1.100",
     "axios": "^1.19.0",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.6",

@@ -31,3 +31,41 @@ export const extractPdfText = async (buffer: Buffer) => {
 
   return extractedText.trim()
 }
+
+export type PdfPageText = {
+  page: number
+  text: string
+}
+
+/** Split stored extract (`--- Page N ---`) into per-page text for this lecture. */
+export const parsePdfPagesFromExtractedContent = (
+  extractedContent: string,
+): PdfPageText[] => {
+  const matches = [...extractedContent.matchAll(/--- Page (\d+) ---/g)]
+
+  if (matches.length === 0) {
+    const trimmed = extractedContent.trim()
+    return trimmed ? [{ page: 1, text: trimmed }] : []
+  }
+
+  const pages: PdfPageText[] = []
+
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i]
+
+    if (!match) {
+      continue;
+    }
+    
+    const page = Number(match[1])
+    const start = (match.index ?? 0) + match[0].length
+    const next = matches[i + 1]
+    const end = next?.index ?? extractedContent.length
+    pages.push({
+      page,
+      text: extractedContent.slice(start, end).trim(),
+    })
+  }
+
+  return pages
+}

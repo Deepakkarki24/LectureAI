@@ -1,3 +1,5 @@
+import type { PdfAnimationScene } from "./pdfAnimationScene.js";
+
 export type SceneAnimation = {
     entrance: string;
     exit: string;
@@ -75,6 +77,9 @@ export type Scene = SceneBase &
 export type LectureVideoProps = {
     audioUrl: string;
     scenes: Scene[];
+    pageImageUrls?: string[];
+    pdfAnimationScenes?: PdfAnimationScene[];
+    pageAspectRatios?: number[];
 };
 
 const isRecord = (data: unknown): data is Record<string, unknown> =>

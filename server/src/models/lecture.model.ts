@@ -47,6 +47,36 @@ interface IScene {
     data: Record<string, unknown>;
 }
 
+/** Normalized 0–1 region on a lecture PDF page image (top-left origin). */
+interface INormalizedRegion {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+interface IPdfSceneCamera {
+    from?: INormalizedRegion;
+    to?: INormalizedRegion;
+    zoom?: number;
+}
+
+/**
+ * One PDF page-camera scene (Phase 2 contract / `pdfAnimationScene.schema.ts`).
+ * Stored separately from `scenes` so the live slide Remotion path keeps working.
+ */
+interface IPdfAnimationScene {
+    id: string;
+    page: number;
+    start: number;
+    end: number;
+    narrationSegments: string[];
+    animation: "none" | "zoom_in" | "zoom_out" | "highlight" | "pan" | "fade" | "focus";
+    focus?: INormalizedRegion;
+    camera?: IPdfSceneCamera;
+    transition?: "none" | "fade";
+}
+
 interface ILecture {
     pdfName: string;
     extractedContent: string;
@@ -56,8 +86,17 @@ interface ILecture {
         english: IScriptParts;
     };
 
-    /** Validated scene plan from generateSceneFromModel (`parsedResult.scenes`). */
+    /** Validated slide scene plan from generateSceneFromModel (`parsedResult.scenes`). */
     scenes: IScene[];
+
+    /**
+     * PDF animation scene plan for the new Remotion camera renderer.
+     * Empty until the Phase 4 planner writes it.
+     */
+    pdfAnimationScenes: IPdfAnimationScene[];
+
+    /** Ordered page-image URLs for this lecture’s PDF (index 0 = page 1). */
+    pageImageUrls: string[];
 
     audio: {
         hinglish: {
@@ -154,6 +193,89 @@ const lectureSchema = new Schema<ILecture>(
                     data: { type: Schema.Types.Mixed, required: true },
                 },
             ],
+            default: [],
+        },
+
+        pdfAnimationScenes: {
+            type: [
+                {
+                    _id: false,
+                    id: { type: String, required: true },
+                    page: {
+                        type: Number,
+                        required: true,
+                        min: 1,
+                        max: 8,
+                    },
+                    start: { type: Number, required: true, min: 0 },
+                    end: { type: Number, required: true, min: 0 },
+                    narrationSegments: {
+                        type: [String],
+                        required: true,
+                        default: [],
+                    },
+                    animation: {
+                        type: String,
+                        required: true,
+                        enum: [
+                            "none",
+                            "zoom_in",
+                            "zoom_out",
+                            "highlight",
+                            "pan",
+                            "fade",
+                            "focus",
+                        ],
+                    },
+                    focus: {
+                        type: {
+                            _id: false,
+                            x: { type: Number, required: true, min: 0, max: 1 },
+                            y: { type: Number, required: true, min: 0, max: 1 },
+                            width: { type: Number, required: true, min: 0, max: 1 },
+                            height: { type: Number, required: true, min: 0, max: 1 },
+                        },
+                        required: false,
+                    },
+                    camera: {
+                        type: {
+                            _id: false,
+                            from: {
+                                type: {
+                                    _id: false,
+                                    x: { type: Number, required: true, min: 0, max: 1 },
+                                    y: { type: Number, required: true, min: 0, max: 1 },
+                                    width: { type: Number, required: true, min: 0, max: 1 },
+                                    height: { type: Number, required: true, min: 0, max: 1 },
+                                },
+                                required: false,
+                            },
+                            to: {
+                                type: {
+                                    _id: false,
+                                    x: { type: Number, required: true, min: 0, max: 1 },
+                                    y: { type: Number, required: true, min: 0, max: 1 },
+                                    width: { type: Number, required: true, min: 0, max: 1 },
+                                    height: { type: Number, required: true, min: 0, max: 1 },
+                                },
+                                required: false,
+                            },
+                            zoom: { type: Number, min: 1, max: 8, required: false },
+                        },
+                        required: false,
+                    },
+                    transition: {
+                        type: String,
+                        enum: ["none", "fade"],
+                        required: false,
+                    },
+                },
+            ],
+            default: [],
+        },
+
+        pageImageUrls: {
+            type: [String],
             default: [],
         },
 

@@ -2,8 +2,14 @@ import { OPENAI_API_KEY } from './env.js';
 import { gpt5Mini } from './model.js';
 import OpenAI from "openai";
 import type { AudioSegment } from '@/utils/segment.js';
+import type { PdfPageText } from '@/services/pdfExtract.service.js';
 import { scenePlanSchema, type ScenePlan } from '@/validators/scene.shema.js';
+import {
+    pdfAnimationScenePlanSchema,
+    type PdfAnimationScenePlan,
+} from '@/validators/pdfAnimationScene.schema.js';
 import { validateScenePlanAgainstSegments } from '@/validators/validateScenePlan.js';
+import { validatePdfAnimationScenePlanAgainstSegments } from '@/validators/validatePdfAnimationScenePlan.js';
 
 export interface LectureScript {
     intro: string;
@@ -333,6 +339,137 @@ export const runOpenAiSceneModel = async (
             success: false,
             scenes: null,
             message: "Failed to generate scene plan",
+            service: "openai",
+            err: err?.message || "Unknown error",
+        };
+    }
+};
+
+/**
+ * Generate PDF page-camera scene plan JSON via GPT-5 mini.
+ * Does not replace runOpenAiSceneModel (live slide Remotion path).
+ */
+export const runOpenAiPdfAnimationSceneModel = async (
+    systemInstruction: string,
+    script: string,
+    audioSegments: AudioSegment[],
+    pdfPages: PdfPageText[]
+) => {
+    try {
+        const openai = getOpenAiClient();
+        const model = gpt5Mini;
+        const maxRetries = 2;
+        const pageCount = pdfPages.length;
+
+        const userInput = JSON.stringify({
+            contentScript: script,
+            alignmentSegments: audioSegments,
+            pdfPages,
+            pageCount,
+        });
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(
+                    `OpenAI PDF animation scene attempt ${attempt}/${maxRetries}`
+                );
+
+                const response = await openai.responses.create({
+                    model,
+                    instructions: systemInstruction,
+                    input: [
+                        {
+                            role: "user",
+                            content: `Generate a JSON object for the following input:\n\n${userInput}`,
+                        },
+                    ],
+                    ...openAiSceneJsonConfig,
+                });
+
+                const finalResult = response.output_text || "";
+
+                console.log(
+                    "Raw OpenAI PDF animation scene response:",
+                    finalResult
+                );
+
+                if (!finalResult) {
+                    throw new Error("Empty response received from OpenAI");
+                }
+
+                let rawResult: unknown;
+
+                try {
+                    rawResult = JSON.parse(finalResult);
+                } catch {
+                    throw new Error("OpenAI returned invalid JSON");
+                }
+
+                const validationResult =
+                    pdfAnimationScenePlanSchema.safeParse(rawResult);
+
+                if (!validationResult.success) {
+                    console.error(
+                        "PDF animation scene schema validation failed:"
+                    );
+                    console.error(validationResult.error.format());
+                    throw new Error(
+                        `Invalid PDF animation scene structure: ${validationResult.error.message}`
+                    );
+                }
+
+                const parsedResult: PdfAnimationScenePlan =
+                    validationResult.data;
+
+                validatePdfAnimationScenePlanAgainstSegments(
+                    parsedResult,
+                    audioSegments,
+                    pageCount
+                );
+
+                console.log(
+                    "✅ PDF animation scene plan validation successful"
+                );
+
+                return {
+                    success: true,
+                    scenes: parsedResult.scenes,
+                    message: "PDF animation scene plan generated",
+                    service: "openai",
+                    err: "",
+                };
+            } catch (err: any) {
+                const status = getOpenAiErrorStatus(err);
+
+                console.error(
+                    `PDF animation scene attempt ${attempt} failed with status:`,
+                    status,
+                    err
+                );
+
+                if (
+                    status === 400 ||
+                    status === 401 ||
+                    status === 403 ||
+                    status === 404
+                ) {
+                    throw err;
+                }
+
+                if (attempt === maxRetries) {
+                    throw err;
+                }
+
+                await sleep(Math.pow(2, attempt) * 1000);
+            }
+        }
+    } catch (err: any) {
+        console.error("OpenAI PDF animation scene generation failed:", err);
+
+        return {
+            success: false,
+            scenes: null,
+            message: "Failed to generate PDF animation scene plan",
             service: "openai",
             err: err?.message || "Unknown error",
         };

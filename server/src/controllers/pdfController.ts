@@ -1,7 +1,9 @@
 import { Lecture } from "@/models/lecture.model.js"
 import { generateModelResponse, generateModelResponseII } from "@/runner/runner.js"
 import { extractPdfText } from "@/services/pdfExtract.service.js"
+import { rasterizePdfPages } from "@/services/pdfPageImage.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
+import { uploadImageToCloudinary } from "@/utils/cloudinaryUploader.js"
 import { sanitizeFileName } from "@/utils/utils.js"
 import type { Request, Response } from "express"
 
@@ -26,6 +28,8 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
             )
         }
 
+        const pageImages = await rasterizePdfPages(req.file.buffer)
+
         const fileName = sanitizeFileName(req.file.originalname)
 
         const lecture = await Lecture.create({
@@ -34,7 +38,30 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
             status: 'extracted'
         })
 
-        const lectureId = lecture._id
+        const lectureId = lecture._id.toString()
+
+        const pageImageUrls: string[] = []
+
+        try {
+            for (const pageImage of pageImages) {
+                const uploaded = await uploadImageToCloudinary(
+                    pageImage.pngBuffer,
+                    `${lectureId}/page-${pageImage.page}`
+                )
+                pageImageUrls.push(uploaded.secure_url)
+            }
+        } catch (uploadError) {
+            await Lecture.findByIdAndDelete(lectureId)
+            throw uploadError
+        }
+
+        if (pageImageUrls.length !== pageImages.length) {
+            return errorResponse(res, 500, "Failed to store all PDF page images")
+        }
+
+        await Lecture.findByIdAndUpdate(lectureId, {
+            $set: { pageImageUrls },
+        })
 
         return successResponse(res, 200, "Content extracted!", { content, lectureId })
     } catch (error) {
