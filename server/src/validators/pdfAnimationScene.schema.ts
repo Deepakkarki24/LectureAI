@@ -12,7 +12,7 @@ import { z } from "zod";
  * Page numbers are 1-based and must match that lecture’s PDF (max 8 pages).
  */
 
-export const MAX_LECTURE_PDF_PAGES = 8;
+export const MAX_LECTURE_PDF_PAGES = 18;
 
 const REGION_EPSILON = 1e-6;
 
@@ -90,6 +90,8 @@ export const pdfAnimationSceneSchema = z
 
         animation: pdfAnimationTypeSchema,
 
+        focusLineId: z.string().optional(),
+
         focus: normalizedRegionSchema.optional(),
 
         camera: pdfSceneCameraSchema.optional(),
@@ -106,7 +108,7 @@ export const pdfAnimationSceneSchema = z
             });
         }
 
-        if (ANIMATIONS_REQUIRING_FOCUS.has(scene.animation) && !scene.focus) {
+        if (ANIMATIONS_REQUIRING_FOCUS.has(scene.animation) && !scene.focus && !scene.focusLineId) {
             ctx.addIssue({
                 code: "custom",
                 message: `${scene.animation} requires a focus region in normalized 0–1 coordinates`,

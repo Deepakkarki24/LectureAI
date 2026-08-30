@@ -1,6 +1,6 @@
 import { Lecture } from "@/models/lecture.model.js"
 import { generateModelResponse, generateModelResponseII } from "@/runner/runner.js"
-import { extractPdfText } from "@/services/pdfExtract.service.js"
+import { extractPdfLayout, extractPdfText } from "@/services/pdfExtract.service.js"
 import { rasterizePdfPages } from "@/services/pdfPageImage.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
 import { uploadImageToCloudinary } from "@/utils/cloudinaryUploader.js"
@@ -28,6 +28,8 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
             )
         }
 
+        const pdfLayout = await extractPdfLayout(req.file.buffer)
+
         const pageImages = await rasterizePdfPages(req.file.buffer)
 
         const fileName = sanitizeFileName(req.file.originalname)
@@ -35,6 +37,7 @@ export const runPdfExtracter = async (req: Request, res: Response) => {
         const lecture = await Lecture.create({
             pdfName: fileName,
             extractedContent: content,
+            pdfLayout,
             status: 'extracted'
         })
 

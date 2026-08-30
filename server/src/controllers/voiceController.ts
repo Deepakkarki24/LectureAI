@@ -1,7 +1,8 @@
 import { Lecture } from "@/models/lecture.model.js";
 import { generatePdfAnimationSceneFromModel } from "@/runner/generatePdfAnimationScene.js";
 import { generateSceneFromModel, generateVoiceFromText } from "@/runner/runner.js";
-import { parsePdfPagesFromExtractedContent } from "@/services/pdfExtract.service.js";
+import { parsePdfPagesFromExtractedContent, type PdfPageLayout } from "@/services/pdfExtract.service.js";
+import { resolvePdfSceneCoordinates, type RawScene } from "@/services/pdfLayout/resolvePdfSceneCoordinates.js";
 import { errorResponse } from "@/utils/apiResponse.js";
 import { uploadAudioToCloudinary } from "@/utils/cloudinaryUploader.js";
 import { createSentenceTimestamps, type ElevenLabsAlignment } from "@/utils/segment.js";
@@ -49,7 +50,7 @@ export const convertTextToVoice = async (
 
         // limit the concurrent taks
         const limit = pLimit(3)
-        
+
         const [
             hinglishAudio,
             introAudioEnglish,
@@ -77,21 +78,15 @@ export const convertTextToVoice = async (
 
         console.log("start generating scene from audio segment...")
 
-        const pdfPages = parsePdfPagesFromExtractedContent(
-            foundLecture.extractedContent
-        )
+        const pdfLayout = foundLecture.pdfLayout as PdfPageLayout[]
 
-        if (pdfPages.length === 0) {
-            return errorResponse(res, 400, "No PDF page text available for scene planning")
+        if (!pdfLayout || pdfLayout.length === 0) {
+            return errorResponse(res, 400, "PDF layout not found. Re-upload the PDF.")
         }
 
-        const [sceneModelResponse, pdfAnimationSceneResponse] = await Promise.all([
+        const [sceneModelResponse, rawPdfAnimationSceneResponse] = await Promise.all([
             generateSceneFromModel(english.content, reframeAudioSegments),
-            generatePdfAnimationSceneFromModel(
-                english.content,
-                reframeAudioSegments,
-                pdfPages
-            ),
+            generatePdfAnimationSceneFromModel(english.content, reframeAudioSegments, pdfLayout),
         ])
 
         console.log("generating scene completed from audio segment!")
@@ -104,21 +99,22 @@ export const convertTextToVoice = async (
             return errorResponse(res, 400, "Error while generating scene from model")
         }
 
-        const pdfAnimationScenes = pdfAnimationSceneResponse?.scenes
-
         if (
-            !pdfAnimationSceneResponse?.success ||
-            !pdfAnimationScenes ||
-            !Array.isArray(pdfAnimationScenes) ||
-            pdfAnimationScenes.length === 0
+            !rawPdfAnimationSceneResponse?.success ||
+            !rawPdfAnimationSceneResponse?.scenes ||
+            rawPdfAnimationSceneResponse.scenes.length === 0
         ) {
             return errorResponse(
                 res,
                 400,
-                pdfAnimationSceneResponse?.err ||
-                    "Error while generating PDF animation scene plan"
+                rawPdfAnimationSceneResponse?.err || "Error while generating PDF animation scene plan"
             )
         }
+
+        const pdfAnimationScenes = resolvePdfSceneCoordinates(
+            rawPdfAnimationSceneResponse.scenes as RawScene[],
+            pdfLayout
+        )
 
         const hinglishBuffer = hinglishAudio.audioBuffer;
 
@@ -191,6 +187,8 @@ export const convertTextToVoice = async (
                 }
             }
         )
+
+        console.log("Audio files uploaded on cloud and secureUrl stored in DB!")
 
         return res.status(200).json({
             success: true,

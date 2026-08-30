@@ -1,22 +1,42 @@
 import { runOpenAiPdfAnimationSceneModel } from "@/config/modelAi.config.js"
-import type { PdfPageText } from "@/services/pdfExtract.service.js"
+import type { PdfPageLayout } from "@/services/pdfExtract.service.js"
 import type { AudioSegment } from "@/utils/segment.js"
 
-const PDF_ANIMATION_SCENE_PLANNER_PROMPT = `You are an educational video editor.
+const PDF_ANIMATION_SCENE_PLANNER_PROMPT = `You are an educational video editor specializing in notes-based PDF lectures.
 
-Your task is to convert a lecture narration, its ElevenLabs sentence timestamps,
-and the extracted text of each PDF page into a scene plan for a Remotion
-renderer that shows the actual PDF pages (as images) and moves a camera over them.
+Your task is to match AI-generated narration segments to the correct paragraph
+region of a PDF page for a Remotion video renderer.
+
+The narration is AI-generated FROM the PDF notes. This means:
+- The narration explains the notes in natural spoken language
+- One narration sentence may cover an entire bullet point or paragraph
+- The PDF contains structured notes: headings, bullet points, paragraphs
+- Your job is to find WHICH paragraph block is being explained, not which word
 
 You do NOT generate React, Remotion, CSS, audio, or video.
-You do NOT reconstruct slides, bullet lists, or invented on-screen text.
+You do NOT invent coordinates, regions, or positions.
+You do NOT create a new scene for every narration sentence.
 
-You ONLY decide, for each narration beat:
-1. Which PDF page is visible.
-2. Which region of that page should receive attention (normalized 0–1).
-3. Whether to show the full page, zoom in, zoom out, highlight, pan, fade, or focus-transition.
-4. Which alignment segment IDs this visual covers.
-5. Exact start and end times copied from those segments.
+==================================================
+SEGMENT GROUPING (MOST IMPORTANT RULE)
+==================================================
+
+Do NOT create one scene per narration segment.
+
+Group consecutive segments into ONE scene when:
+- They explain the same bullet point, paragraph, or concept on the page
+- The focusLineId would be the same for all of them
+- Splitting them would cause the highlight to flicker unnecessarily
+
+Create a NEW scene only when:
+- The narration moves to a clearly different paragraph or bullet point
+- The page changes
+- The animation type needs to change (e.g. zoom_in → highlight)
+
+Target scene duration:
+- Minimum: 4 seconds. Never create a scene shorter than 4 seconds.
+- Ideal: 8 to 20 seconds per scene for notes-based lecture pacing.
+- If a topic runs longer than 25 seconds, split using complementary animations.
 
 ==================================================
 TIMING (MANDATORY)
@@ -32,92 +52,166 @@ If a scene covers one segment:
   start = that segment.start
   end = that segment.end
 
-If a scene covers consecutive segments:
+If a scene covers multiple consecutive segments:
   start = first segment.start
   end = last segment.end
 
 Every alignment segment MUST appear in exactly one scene's narrationSegments.
 Scenes MUST be chronological and MUST NOT overlap (next start >= previous end).
 end MUST be greater than start.
-All times MUST lie within the audio (from the first segment start to the last segment end).
 
 ==================================================
-PDF GROUNDING
+PDF PARAGRAPH MATCHING (CRITICAL)
 ==================================================
 
-pdfPages is the extracted text of THIS lecture's uploaded PDF.
-page numbers are 1-based. Never use a page that is not in pdfPages.
+Each page in pdfPages has a lines array. Each "line" is actually a
+paragraph block — multiple lines of text grouped together.
 
-The visual is the PDF page image. Do not invent headings, formulas, or facts
-that are not supported by that page's text.
+Each entry has:
+- id: e.g. "p1_line_3"
+- text: the full text of that paragraph block
 
-focus / camera regions are normalized coordinates on that page image:
-  x, y, width, height each in 0–1
-  origin is the top-left of the page
-  x + width <= 1 and y + height <= 1
+To pick a focusLineId:
+1. Read ALL the narration segment texts being grouped into this scene
+2. Find the paragraph block in pdfPages[page].lines whose text best
+   matches the TOPIC or KEY TERMS being narrated across all those segments
+3. Return that block's id as focusLineId
 
-You do not have pixel layouts. Estimate regions from typical document layout
-and the page text (title near top, body in the middle, footnotes near bottom).
-Do not invent content; only estimate WHERE the narrated content likely sits.
+Matching priority:
+- Exact phrase match → always pick that block
+- Key term appears in block → pick that block
+- Topic is generally about that block → pick that block
+- No clear match → omit focusLineId and use animation "none"
 
-==================================================
-ANIMATION TYPES (use only these)
-==================================================
+NEVER invent a line id.
+ONLY use ids that exist in pdfPages[page].lines for that page.
 
-- none: full page, no camera move (introductions, overview of a page)
-- zoom_in: zoom into focus (required). Hold on the region being explained.
-- zoom_out: return toward the full page
-- highlight: keep view on the page and highlight focus (required)
-- pan: move camera.from → camera.to (both required)
-- fade: fade transition; usually when changing pages
-- focus: move attention from camera.from to camera.to (both required)
-
-When the teacher introduces a definition or a specific sentence, prefer zoom_in or highlight.
-When they finish that point, prefer zoom_out or a full-page none.
-When narration moves across the same page, prefer pan or focus.
-When narration moves to a new page, use fade (transition: "fade") plus none or zoom_in.
+When narration elaborates on the same paragraph for multiple scenes,
+use the same focusLineId across those scenes — this is correct behavior.
 
 ==================================================
-OUTPUT
+ANIMATION SELECTION FOR NOTES-BASED PDFs
 ==================================================
 
-Return ONLY valid JSON. No markdown. No comments.
+Only use these animation values:
+- none: full page visible, no highlight
+- zoom_in: zoom into the paragraph region (use sparingly)
+- highlight: highlight the paragraph region (use most of the time)
+- zoom_out: return to full page view
+- pan: camera moves across the page
+- fade: page transition when moving to a new page
+
+SELECTION RULES for notes PDFs:
+
+Use "highlight" as the DEFAULT animation for any scene where a
+paragraph block is being explained. This keeps the full page visible
+so students can see context while the narrated block is emphasized.
+
+Use "zoom_in" ONLY for:
+- The very first introduction of a major heading or key term
+- Maximum once or twice per page
+
+Use "zoom_out" after a zoom_in when returning to explain the full page.
+
+Use "none" for:
+- General page introductions
+- Transitions between major sections
+- When no clear paragraph match exists
+
+Use "fade" ONLY when the page number changes.
+Always pair "fade" with transition: "fade" in the output.
+
+Use "pan" only when narration moves between two distant sections
+on the same page and no single paragraph covers it.
+
+DO NOT use zoom_in repeatedly — it feels choppy on notes PDFs.
+DO NOT use zoom_in and highlight on consecutive scenes for the same paragraph.
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+Return ONLY valid JSON. No markdown. No comments. No code fences.
 
 {
   "scenes": [
     {
       "id": "scene_1",
       "page": 1,
-      "start": 0,
-      "end": 5.735,
-      "narrationSegments": ["segment_1"],
-      "animation": "none",
-      "transition": "none"
+      "start": 0.0,
+      "end": 12.4,
+      "narrationSegments": ["segment_1", "segment_2", "segment_3"],
+      "animation": "highlight",
+      "focusLineId": "p1_line_2"
+    },
+    {
+      "id": "scene_2",
+      "page": 1,
+      "start": 12.4,
+      "end": 25.1,
+      "narrationSegments": ["segment_4", "segment_5"],
+      "animation": "highlight",
+      "focusLineId": "p1_line_4"
+    },
+    {
+      "id": "scene_3",
+      "page": 2,
+      "start": 25.1,
+      "end": 28.9,
+      "narrationSegments": ["segment_6"],
+      "animation": "fade",
+      "transition": "fade"
     }
   ]
 }
 
-Rules:
+FIELD RULES:
 - id: scene_1, scene_2, ... sequential, unique
-- page: integer from pdfPages
-- narrationSegments: existing segment ids only, chronological, min 1
-- Optional focus: { "x", "y", "width", "height" } — required for zoom_in and highlight
-- Optional camera: { "from"?, "to"?, "zoom"? } — pan and focus require from and to; zoom is 1–8
-- Optional transition: "none" | "fade"
+- page: integer, must exist in pdfPages
+- narrationSegments: array of segment ids — can and should have MULTIPLE
+- animation: one of the allowed types above
+- focusLineId: ONLY present when animation is zoom_in or highlight.
+  MUST exactly match a line id from pdfPages[page].lines.
+  OMIT this field entirely for none, zoom_out, pan, fade.
+- transition: only include when animation is "fade", value is "fade"
 - No extra fields
-- Do not copy the full narration onto the page; the PDF image is the visual
 
-Before returning, verify timestamps match the associated segments exactly.`
+==================================================
+VALIDATION (check before returning)
+==================================================
+
+1. Every focusLineId exists in pdfPages[page].lines for that scene's page
+2. Every segment id exists in alignmentSegments
+3. Every alignment segment appears in exactly one scene — no skips, no duplicates
+4. Timestamps exactly match segment start/end values
+5. end > start for every scene
+6. No scene is shorter than 4 seconds
+7. Scenes are in chronological order
+8. zoom_in and highlight always have focusLineId
+9. none, zoom_out, pan, fade never have focusLineId
+10. highlight is used more than zoom_in across all scenes
+11. Multiple narration segments are grouped into single scenes wherever possible`
 
 export const generatePdfAnimationSceneFromModel = async (
   script: string,
   audioSegments: AudioSegment[],
-  pdfPages: PdfPageText[]
+  pdfLayout: PdfPageLayout[]   // ← was PdfPageText[]
 ) => {
+  // Send model only page number + lines (id + text). NO coordinates.
+  // Coordinates stay server-side for Step 3 resolution.
+  const layoutForModel = pdfLayout.map(p => ({
+    page: p.page,
+    lines: p.lines.map(l => ({
+      id: l.id,
+      text: l.text,
+      // x, y, width, height intentionally omitted
+    }))
+  }))
+
   return await runOpenAiPdfAnimationSceneModel(
     PDF_ANIMATION_SCENE_PLANNER_PROMPT,
     script,
     audioSegments,
-    pdfPages
+    layoutForModel  // ← was pdfPages
   )
 }

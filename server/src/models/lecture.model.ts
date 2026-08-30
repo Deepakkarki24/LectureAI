@@ -1,4 +1,4 @@
-import mongoose, { model, Schema, type InferSchemaType, type Model } from "mongoose";
+import { model, Schema, type InferSchemaType, type Model } from "mongoose";
 
 /**
  * Lecture document for the PDF → script → TTS → video pipeline.
@@ -30,6 +30,22 @@ interface ISceneAnimation {
     entrance: string;
     exit: string;
     emphasis?: string;
+}
+
+interface ILayoutLine {
+    id: string;
+    text: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+interface IPdfPageLayout {
+    page: number;
+    pageWidth: number;
+    pageHeight: number;
+    lines: ILayoutLine[];
 }
 
 /**
@@ -80,6 +96,7 @@ interface IPdfAnimationScene {
 interface ILecture {
     pdfName: string;
     extractedContent: string;
+    pdfLayout: IPdfPageLayout[];
 
     script: {
         hinglish: IScriptParts;
@@ -142,6 +159,27 @@ const lectureSchema = new Schema<ILecture>(
         extractedContent: {
             type: String,
             default: "",
+        },
+
+        pdfLayout: {
+            type: [
+                {
+                    page: Number,
+                    pageWidth: Number,
+                    pageHeight: Number,
+                    lines: [
+                        {
+                            id: String,
+                            text: String,
+                            x: Number,
+                            y: Number,
+                            width: Number,
+                            height: Number,
+                        },
+                    ],
+                },
+            ],
+            default: [],
         },
 
         script: {

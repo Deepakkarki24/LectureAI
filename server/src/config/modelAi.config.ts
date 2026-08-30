@@ -349,11 +349,17 @@ export const runOpenAiSceneModel = async (
  * Generate PDF page-camera scene plan JSON via GPT-5 mini.
  * Does not replace runOpenAiSceneModel (live slide Remotion path).
  */
+
+type LayoutForModel = {
+    page: number
+    lines: { id: string; text: string }[]
+}
+
 export const runOpenAiPdfAnimationSceneModel = async (
     systemInstruction: string,
     script: string,
     audioSegments: AudioSegment[],
-    pdfPages: PdfPageText[]
+    pdfPages: LayoutForModel[]
 ) => {
     try {
         const openai = getOpenAiClient();

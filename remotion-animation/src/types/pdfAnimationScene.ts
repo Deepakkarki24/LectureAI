@@ -5,7 +5,7 @@
  * Region coordinates: normalized 0–1, origin top-left of the page image.
  */
 
-export const MAX_LECTURE_PDF_PAGES = 8;
+export const MAX_LECTURE_PDF_PAGES = 18;
 
 export type PdfAnimationType =
     | "none"

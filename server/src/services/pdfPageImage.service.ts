@@ -3,7 +3,7 @@ import path from "node:path";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const MAX_PDF_SIZE_BYTES = 20 * 1024 * 1024;
-const MAX_PDF_PAGES = 8;
+const MAX_PDF_PAGES = 18;
 const TARGET_LONG_EDGE_PX = 1920;
 const MIN_SCALE = 1.5;
 const MAX_SCALE = 3;
@@ -75,8 +75,6 @@ export const rasterizePdfPages = async (
             "PDF page rendering is unavailable. Install @napi-rs/canvas."
         );
     }
-
-    console.log("after checking canvasFactory.create")
 
     const pages: PdfPageImage[] = [];
 
