@@ -13,7 +13,7 @@ export const checkAndCombineIfReady = async (lectureId: string) => {
     const allReady =
         !!lecture.video.heygen.intro.url &&
         !!lecture.video.heygen.outro.url &&
-        !!lecture.video.remotionUrl;
+        !!lecture.video.pdfVideoUrl;
 
     console.log("already?", allReady)
 
@@ -38,7 +38,7 @@ export const checkAndCombineIfReady = async (lectureId: string) => {
     }
 
     const intro = lecture?.video.heygen.intro.url as string
-    const content = lecture?.video.remotionUrl as string
+    const content = lecture?.video.pdfVideoUrl as string
     const outro = lecture?.video.heygen.outro.url as string
 
     try {
@@ -79,7 +79,7 @@ export const checkAndCombineIfReady = async (lectureId: string) => {
     }
 }
 
-export const processRemotion = async (lectureId: string) => {
+export const processPdfAnimation = async (lectureId: string) => {
     try {
         const lecture = await Lecture.findById(lectureId)
 
@@ -93,7 +93,7 @@ export const processRemotion = async (lectureId: string) => {
             throw new Error("English content audio URL is missing")
         }
 
-        const remotionUrl = await renderVideoAnimation({
+        const pdfVideoUrl = await renderVideoAnimation({
             lectureId,
             audioUrl,
             scenes: lecture.scenes,
@@ -101,20 +101,20 @@ export const processRemotion = async (lectureId: string) => {
             pageImageUrls: lecture.pageImageUrls,
         })
 
-        if (!remotionUrl) {
-            throw new Error("Remotion render returned no URL")
+        if (!pdfVideoUrl) {
+            throw new Error("FFMPEG PDF render returned no URL")
         }
 
         await Lecture.findByIdAndUpdate(
             lectureId,
             {
                 $set: {
-                    "video.remotionUrl": remotionUrl,
+                    "video.pdfVideoUrl": pdfVideoUrl,
                 }
             }
         )
 
-        console.log("Remotion url stored in db!")
+        console.log("PDF Video url stored in db!")
 
         await checkAndCombineIfReady(lectureId)
     } catch (err) {

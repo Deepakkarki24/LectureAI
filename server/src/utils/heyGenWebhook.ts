@@ -2,7 +2,7 @@ import type { Request, Response } from "express"
 import { errorResponse, successResponse } from "./apiResponse.js"
 import cloudinary from "@/config/cloudinary.config.js"
 import { Lecture } from "@/models/lecture.model.js"
-import { checkAndCombineIfReady } from "./remotionProcess.js";
+import { checkAndCombineIfReady } from "./ProcessPdfAnimation.js";
 
 export const heygenWebhook = async (
     req: Request,

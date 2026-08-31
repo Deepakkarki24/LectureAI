@@ -1,12 +1,9 @@
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import cloudinary from "@/config/cloudinary.config.js";
 import { pageIndexToUrl } from "@/animationPipeline/pipeline.types.js";
-import { renderLectureVideo } from "remotion-animation";
-import type {
-    PdfAnimationScene as RemotionPdfAnimationScene,
-    Scene,
-} from "remotion-animation";
+import { renderPdfAnimationVideo } from "@/services/ffmpegPdfRenderer/renderPdfAnimationVideo.js";
 import type {
     NormalizedRegion,
     PdfAnimationScene,
@@ -43,16 +40,11 @@ const omitUndefinedRegion = (
     };
 };
 
-/**
- * Zod optional fields are `T | undefined`. Remotion’s props use
- * exactOptionalPropertyTypes, so those keys must be omitted — not set to
- * undefined — and mongoose leftovers must not leak into inputProps.
- */
-const toRemotionPdfAnimationScenes = (
+const sanitizePdfAnimationScenes = (
     scenes: PdfAnimationScene[]
-): RemotionPdfAnimationScene[] =>
+): PdfAnimationScene[] =>
     scenes.map((scene) => {
-        const mapped: RemotionPdfAnimationScene = {
+        const mapped: PdfAnimationScene = {
             id: scene.id,
             page: scene.page,
             start: scene.start,
@@ -67,7 +59,7 @@ const toRemotionPdfAnimationScenes = (
         }
 
         if (scene.camera) {
-            const camera: NonNullable<RemotionPdfAnimationScene["camera"]> = {};
+            const camera: NonNullable<PdfAnimationScene["camera"]> = {};
             const from = omitUndefinedRegion(scene.camera.from);
             const to = omitUndefinedRegion(scene.camera.to);
 
@@ -120,58 +112,55 @@ export type RenderAnimationInput = {
 export const renderVideoAnimation = async (
     input: RenderAnimationInput
 ): Promise<string> => {
-    console.log("Remotion process started!");
+    console.log("PDF animation render started!");
 
     if (!input.audioUrl) {
-        throw new Error("Content audio URL is required for Remotion");
+        throw new Error("Content audio URL is required for video rendering");
     }
 
-    const scenes = asPlainArray<Scene>(input.scenes ?? []);
-    const pdfAnimationScenes = asPlainArray<PdfAnimationScene>(
-        input.pdfAnimationScenes ?? []
+    const pdfAnimationScenes = sanitizePdfAnimationScenes(
+        asPlainArray<PdfAnimationScene>(input.pdfAnimationScenes ?? [])
     );
     const pageImageUrls = input.pageImageUrls ?? [];
 
-    if (pdfAnimationScenes.length > 0) {
-        assertPdfPagesForScenes(pdfAnimationScenes, pageImageUrls);
+    if (pdfAnimationScenes.length === 0) {
+        throw new Error(
+            "No PDF animation scene plan is available for FFmpeg rendering"
+        );
     }
 
-    if (pdfAnimationScenes.length === 0 && scenes.length === 0) {
-        throw new Error("No scene plan is available for Remotion");
-    }
+    assertPdfPagesForScenes(pdfAnimationScenes, pageImageUrls);
 
-    const packageRoot = path.resolve(
-        path.dirname(fileURLToPath(import.meta.url)),
-        "../../../remotion-animation"
+    const outputPath = path.join(
+        os.tmpdir(),
+        `lecture-video-${input.lectureId}.mp4`
     );
 
-    const outputPath = await renderLectureVideo({
-        outputLocation: path.join(
-            packageRoot,
-            "out",
-            `video-${input.lectureId}.mp4`
-        ),
-        inputProps: {
-            audioUrl: input.audioUrl,
-            scenes,
-            pageImageUrls: [...pageImageUrls],
-            pdfAnimationScenes: toRemotionPdfAnimationScenes(pdfAnimationScenes),
-        },
+    await renderPdfAnimationVideo({
+        lectureId: input.lectureId,
+        audioUrl: input.audioUrl,
+        pdfAnimationScenes,
+        pageImageUrls: [...pageImageUrls],
+        outputPath,
     });
 
-    console.log("Remotion video generated.");
+    console.log("PDF animation video generated.");
     console.log("Video uploading to cloud...");
 
-    const result = await cloudinary.uploader.upload(outputPath, {
-        resource_type: "video",
-        folder: "lecture-videos",
-        public_id: `remotion-${input.lectureId}`,
-    });
+    try {
+        const result = await cloudinary.uploader.upload(outputPath, {
+            resource_type: "video",
+            folder: "lecture-videos",
+            public_id: `remotion-${input.lectureId}`,
+        });
 
-    if (!result?.secure_url) {
-        throw new Error("Unable to upload Remotion video to Cloudinary");
+        if (!result?.secure_url) {
+            throw new Error("Unable to upload animation video to Cloudinary");
+        }
+
+        console.log("Video uploaded successfully.");
+        return result.secure_url;
+    } finally {
+        await fs.unlink(outputPath).catch(() => {});
     }
-
-    console.log("Video uploaded successfully.");
-    return result.secure_url;
 };

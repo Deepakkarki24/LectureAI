@@ -131,7 +131,7 @@ interface ILecture {
             intro: IHeyGenClip;
             outro: IHeyGenClip;
         };
-        remotionUrl: string | null;
+        pdfVideoUrl: string | null;
         finalUrl: string | null;
     };
 
@@ -353,7 +353,7 @@ const lectureSchema = new Schema<ILecture>(
                 },
             },
 
-            remotionUrl: {
+            pdfVideoUrl: {
                 type: String,
                 default: null,
             },

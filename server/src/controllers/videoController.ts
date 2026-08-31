@@ -3,7 +3,7 @@ import { createHeyGenVideo } from "@/services/heygen.service.js"
 import { errorResponse, successResponse } from "@/utils/apiResponse.js"
 import type { Request, Response } from "express"
 import { Lecture } from "@/models/lecture.model.js";
-import { processRemotion } from "@/utils/remotionProcess.js";
+import { processPdfAnimation } from "@/utils/ProcessPdfAnimation.js";
 
 export const generateLectureVideo = async (
     req: Request,
@@ -88,7 +88,7 @@ export const generateLectureVideo = async (
         });
 
         // Renders this lecture's PDF page animation (or legacy slides) with Remotion
-        processRemotion(lectureId)
+        processPdfAnimation(lectureId)
 
         console.log("Video Id generated!")
 
@@ -115,53 +115,3 @@ export const generateLectureVideo = async (
         })
     }
 }
-
-// export const renderVideo = async (
-//     req: Request,
-//     res: Response
-// ) => {
-//     try {
-//         const { audioUrl } = req.body ?? {};
-
-//         const scenes = JSON.parse(req.body.scenes)
-
-//         console.log("scenes:", scenes);
-//         console.log("isArray:", Array.isArray(scenes));
-
-//         const outputPath = await renderLectureVideo(
-//             scenes || audioUrl
-//                 ? {
-//                     inputProps: {
-//                         ...(scenes ? { scenes } : {}),
-//                         ...(audioUrl ? { audioUrl } : {}),
-//                     },
-//                 }
-//                 : {},
-//         );
-
-//         console.log("Remotion video generated.");
-
-//         const result = await cloudinary.uploader.upload(
-//             outputPath,
-//             {
-//                 resource_type: "video",
-//                 folder: "lecture-videos",
-//             }
-//         );
-
-//         if (!result) return errorResponse(res, 499, "Error while uploading the video!")
-
-//         const secure_url = result.secure_url
-
-//         console.log("Video uploaded successfully.");
-
-//         return successResponse(res, 200, secure_url, "Vido rendered successfully.")
-//     } catch (error) {
-//         console.error("Video generation error:", error);
-
-//         return res.status(500).json({
-//             success: false,
-//             message: "Failed to start video generation",
-//         });
-//     }
-// };
