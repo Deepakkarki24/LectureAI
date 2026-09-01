@@ -1,8 +1,0 @@
-/node_modules
-
-/.env
-/.env*
-
-/dist
-/out
-/node_modules/.cache
